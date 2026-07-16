@@ -5,6 +5,7 @@ use sea_orm::{
 use serde::Deserialize;
 
 use crate::entities::event::{self, Entity as Event};
+use crate::state::Snapshot;
 
 #[derive(Deserialize)]
 pub struct EventPayload {
@@ -57,6 +58,7 @@ pub async fn get_event(db: web::Data<DatabaseConnection>, path: web::Path<i32>) 
 #[post("/events")]
 pub async fn create_event(
     db: web::Data<DatabaseConnection>,
+    snap: web::Data<Snapshot>,
     payload: web::Json<EventPayload>,
 ) -> impl Responder {
     let payload = payload.into_inner();
@@ -70,7 +72,10 @@ pub async fn create_event(
         ..Default::default()
     };
     match active.insert(db.get_ref()).await {
-        Ok(ev) => HttpResponse::Created().json(ev),
+        Ok(ev) => {
+            snap.refresh(db.get_ref()).await;
+            HttpResponse::Created().json(ev)
+        }
         Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({ "error": e.to_string() })),
     }
 }
@@ -78,6 +83,7 @@ pub async fn create_event(
 #[put("/events/{id}")]
 pub async fn update_event(
     db: web::Data<DatabaseConnection>,
+    snap: web::Data<Snapshot>,
     path: web::Path<i32>,
     payload: web::Json<EventPayload>,
 ) -> impl Responder {
@@ -101,7 +107,10 @@ pub async fn update_event(
     active.all_day = Set(payload.all_day);
     active.color = Set(payload.color);
     match active.update(db.get_ref()).await {
-        Ok(ev) => HttpResponse::Ok().json(ev),
+        Ok(ev) => {
+            snap.refresh(db.get_ref()).await;
+            HttpResponse::Ok().json(ev)
+        }
         Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({ "error": e.to_string() })),
     }
 }
@@ -109,11 +118,21 @@ pub async fn update_event(
 #[delete("/events/{id}")]
 pub async fn delete_event(
     db: web::Data<DatabaseConnection>,
+    snap: web::Data<Snapshot>,
     path: web::Path<i32>,
 ) -> impl Responder {
     match Event::delete_by_id(path.into_inner()).exec(db.get_ref()).await {
-        Ok(res) if res.rows_affected > 0 => HttpResponse::NoContent().finish(),
+        Ok(res) if res.rows_affected > 0 => {
+            snap.refresh(db.get_ref()).await;
+            HttpResponse::NoContent().finish()
+        }
         Ok(_) => HttpResponse::NotFound().json(serde_json::json!({ "error": "event not found" })),
         Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({ "error": e.to_string() })),
     }
+}
+
+/// Manual export of the in-memory snapshot (last three months), as JSON.
+#[get("/export")]
+pub async fn export_events(snap: web::Data<Snapshot>) -> impl Responder {
+    HttpResponse::Ok().json(snap.events())
 }
