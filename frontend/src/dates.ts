@@ -15,6 +15,16 @@ export const MONTH_NAMES = [
 
 export const DAY_NAMES = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
+export const FULL_DAY_NAMES = [
+  "Dimanche",
+  "Lundi",
+  "Mardi",
+  "Mercredi",
+  "Jeudi",
+  "Vendredi",
+  "Samedi",
+];
+
 /** Local date → "YYYY-MM-DD" */
 export function toDateKey(d: Date): string {
   const y = d.getFullYear();
@@ -34,6 +44,13 @@ export function isSameDay(a: Date, b: Date): boolean {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
   );
+}
+
+/** Whether the event overlaps the given (local) day. */
+export function eventCoversDay(start: string, end: string, day: Date): boolean {
+  const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+  const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999);
+  return new Date(start) <= dayEnd && new Date(end) >= dayStart;
 }
 
 /**

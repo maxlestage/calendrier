@@ -6,11 +6,15 @@
     { "url": "heroku/nodejs" },
     { "url": "https://github.com/emk/heroku-buildpack-rust" }
   ],
-  "addons": ["heroku-postgresql"],
   "env": {
     "RUST_LOG": {
       "description": "Niveau de log du backend",
       "value": "info",
+      "required": false
+    },
+    "DATABASE_URL": {
+      "description": "Base SQLite (attention : stockage éphémère sur Heroku, les données sont perdues au redémarrage du dyno)",
+      "value": "sqlite:///tmp/calendar.db?mode=rwc",
       "required": false
     }
   }
