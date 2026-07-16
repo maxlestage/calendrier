@@ -6,11 +6,23 @@
     { "url": "heroku/nodejs" },
     { "url": "https://github.com/emk/heroku-buildpack-rust" }
   ],
-  "addons": ["heroku-postgresql"],
   "env": {
     "RUST_LOG": {
       "description": "Niveau de log du backend",
       "value": "info",
+      "required": false
+    },
+    "DATABASE_URL": {
+      "description": "Base SQLite (attention : stockage éphémère sur Heroku, les données sont perdues au redémarrage du dyno)",
+      "value": "sqlite:///tmp/calendar.db?mode=rwc",
+      "required": false
+    },
+    "HEROKU_API_KEY": {
+      "description": "Clé API Heroku (Account Settings → API Key) : permet de sauvegarder les 3 derniers mois d'événements dans une config var à l'arrêt du dyno, et de les restaurer au démarrage suivant",
+      "required": false
+    },
+    "HEROKU_APP_NAME": {
+      "description": "Nom exact de cette app Heroku (nécessaire avec HEROKU_API_KEY pour la sauvegarde/restauration)",
       "required": false
     }
   }

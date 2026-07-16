@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CalendarGrid from "./components/CalendarGrid";
+import DayAgenda from "./components/DayAgenda";
 import EventModal from "./components/EventModal";
 import { createEvent, deleteEvent, fetchEvents, updateEvent } from "./api";
-import { MONTH_NAMES, monthGridDays } from "./dates";
+import { eventCoversDay, MONTH_NAMES, monthGridDays } from "./dates";
 import type { CalendarEvent, EventPayload } from "./types";
 
 interface ModalState {
@@ -14,6 +15,7 @@ export default function App() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
+  const [selectedDay, setSelectedDay] = useState<Date>(now);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +50,16 @@ export default function App() {
     const d = new Date();
     setYear(d.getFullYear());
     setMonth(d.getMonth());
+    setSelectedDay(d);
+  };
+
+  const selectDay = (day: Date) => {
+    setSelectedDay(day);
+    // Selecting a day of the previous/next month navigates there
+    if (day.getMonth() !== month || day.getFullYear() !== year) {
+      setYear(day.getFullYear());
+      setMonth(day.getMonth());
+    }
   };
 
   const save = async (payload: EventPayload) => {
@@ -68,39 +80,42 @@ export default function App() {
     reload();
   };
 
+  const dayEvents = events.filter((ev) => eventCoversDay(ev.start, ev.end, selectedDay));
+
   return (
     <div className="app">
       <header className="toolbar">
-        <h1>📅 Calendrier</h1>
-        <div className="nav">
-          <button className="btn" onClick={() => shiftMonth(-1)} aria-label="Mois précédent">
-            ‹
-          </button>
-          <span className="month-label">
-            {MONTH_NAMES[month]} {year}
-          </span>
-          <button className="btn" onClick={() => shiftMonth(1)} aria-label="Mois suivant">
-            ›
-          </button>
-          <button className="btn" onClick={goToday}>
-            Aujourd'hui
-          </button>
-        </div>
-        <button
-          className="btn primary"
-          onClick={() => setModal({ event: null, initialDate: new Date() })}
-        >
-          + Événement
+        <button className="nav-btn" onClick={() => shiftMonth(-1)} aria-label="Mois précédent">
+          ‹
+        </button>
+        <button className="month-label" onClick={goToday} title="Revenir à aujourd'hui">
+          {MONTH_NAMES[month]} {year}
+        </button>
+        <button className="nav-btn" onClick={() => shiftMonth(1)} aria-label="Mois suivant">
+          ›
         </button>
       </header>
-      {error && <p className="error banner">⚠ {error} — le backend est-il démarré ?</p>}
+      {error && <p className="error banner">⚠ {error}</p>}
       <CalendarGrid
         year={year}
         month={month}
         events={events}
-        onDayClick={(day) => setModal({ event: null, initialDate: day })}
-        onEventClick={(event) => setModal({ event, initialDate: new Date(event.start) })}
+        selectedDay={selectedDay}
+        onSelectDay={selectDay}
       />
+      <DayAgenda
+        day={selectedDay}
+        events={dayEvents}
+        onEventClick={(event) => setModal({ event, initialDate: new Date(event.start) })}
+        onAdd={() => setModal({ event: null, initialDate: selectedDay })}
+      />
+      <button
+        className="fab"
+        aria-label="Nouvel événement"
+        onClick={() => setModal({ event: null, initialDate: selectedDay })}
+      >
+        +
+      </button>
       {modal && (
         <EventModal
           event={modal.event}
