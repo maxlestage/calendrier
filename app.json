@@ -24,6 +24,10 @@
     "HEROKU_APP_NAME": {
       "description": "Nom exact de cette app Heroku (nécessaire avec HEROKU_API_KEY pour la sauvegarde/restauration)",
       "required": false
+    },
+    "TMDB_API_KEY": {
+      "description": "Clé API TMDB (gratuite sur themoviedb.org) : récupère automatiquement les sorties cinéma France à venir au démarrage",
+      "required": false
     }
   }
 }

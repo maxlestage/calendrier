@@ -44,12 +44,12 @@ Pour des déploiements continus ensuite : dashboard Heroku → l'app → onglet
 
 ## Fonctionnalités
 
-- **Événements pré-chargés 2026** (insérés automatiquement au démarrage, `backend/seed_events.json`) :
-  - 🏎️ **F1** : les 22 Grands Prix de la saison 2026 (rouge)
-  - 🎬 **Sorties cinéma** France : L'Odyssée, Spider-Man : Brand New Day, Avengers : Doomsday, Dune 3… (violet)
-  - 🎆 **Feux d'artifice** : 14 Juillet, 15 août, Saint-Sylvestre (orange)
-  - ✨ **Astrologie** : saisons zodiacales, pleines et nouvelles lunes (turquoise)
-  - Les événements plus vieux que 3 mois ne sont pas réinsérés ; un événement pré-chargé supprimé peut réapparaître au redémarrage suivant du dyno
+- **Événements thématiques générés à chaque démarrage**, pour l'année en cours **et** la suivante :
+  - 🏎️ **F1** (rouge) : calendrier récupéré depuis l'[API Jolpica](https://api.jolpi.ca) (successeur d'Ergast, sans clé) à chaque démarrage ; repli sur la saison 2026 embarquée si hors-ligne
+  - 🎆 **Feux d'artifice** (orange) : 14 Juillet, 15 août, Saint-Sylvestre — générés pour chaque année
+  - ✨ **Astrologie** (turquoise) : débuts des saisons zodiacales + **pleines et nouvelles lunes calculées** (algorithme de Meeus, précision de quelques minutes, validé par tests unitaires contre les éphémérides 2026)
+  - 🎬 **Sorties cinéma** France (violet) : liste 2026 embarquée ; ajoutez une config var `TMDB_API_KEY` (clé gratuite sur themoviedb.org) pour récupérer automatiquement les sorties à venir les plus populaires
+  - Dédup au démarrage (pas de doublons entre redémarrages) ; les dates plus vieilles que 3 mois ne sont pas réinsérées ; un événement pré-chargé supprimé peut réapparaître au redémarrage suivant. `SEED_DISABLED=1` désactive tout
 
 - Vue mensuelle (semaine commençant le lundi), navigation mois précédent/suivant, bouton « Aujourd'hui »
 - Création d'un événement en cliquant sur un jour ou via le bouton « + Événement »
