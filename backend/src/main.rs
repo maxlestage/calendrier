@@ -1,4 +1,5 @@
 mod astro;
+mod astronomy;
 mod backup;
 mod entities;
 mod f1;

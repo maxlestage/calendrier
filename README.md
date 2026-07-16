@@ -45,11 +45,12 @@ Pour des déploiements continus ensuite : dashboard Heroku → l'app → onglet
 ## Fonctionnalités
 
 - **Événements thématiques générés à chaque démarrage**, pour l'année en cours **et** la suivante :
-  - 🏎️ **F1** (rouge) : calendrier récupéré depuis l'[API Jolpica](https://api.jolpi.ca) (successeur d'Ergast, sans clé) à chaque démarrage ; repli sur la saison 2026 embarquée si hors-ligne
-  - 🎆 **Feux d'artifice** (orange) : 14 Juillet, 15 août, Saint-Sylvestre — générés pour chaque année
-  - ✨ **Astrologie** (turquoise) : débuts des saisons zodiacales + **pleines et nouvelles lunes calculées** (algorithme de Meeus, précision de quelques minutes, validé par tests unitaires contre les éphémérides 2026)
+  - 🏎️ **F1** (rouge) : calendrier récupéré depuis l'[API Jolpica](https://api.jolpi.ca) (successeur d'Ergast, sans clé) à chaque démarrage, avec **heure de départ exacte des courses et des sprints** ; repli sur la saison 2026 embarquée (journée entière) si hors-ligne
+  - 🔭 **Astronomie** (bleu nuit) : **éclipses solaires et lunaires calculées** (Meeus ch. 54, types total/annulaire/partiel validés contre le catalogue NASA), équinoxes et solstices à la minute (Meeus ch. 27), pics des essaims de météores (Perséides, Géminides…)
+  - ✨ **Astrologie** (turquoise) : débuts des saisons zodiacales + **pleines et nouvelles lunes calculées** à l'instant exact (Meeus ch. 49, validé contre les éphémérides)
+  - 🎆 **Feux d'artifice** (orange) : 14 Juillet, 15 août, Saint-Sylvestre — horaires de soirée (~22h30)
   - 🎬 **Sorties cinéma** France (violet) : liste 2026 embarquée ; ajoutez une config var `TMDB_API_KEY` (clé gratuite sur themoviedb.org) pour récupérer automatiquement les sorties à venir les plus populaires
-  - Dédup au démarrage (pas de doublons entre redémarrages) ; les dates plus vieilles que 3 mois ne sont pas réinsérées ; un événement pré-chargé supprimé peut réapparaître au redémarrage suivant. `SEED_DISABLED=1` désactive tout
+  - Dédup au démarrage par jour civil de Paris (pas de doublons entre redémarrages) ; les dates plus vieilles que 3 mois ne sont pas réinsérées ; un événement pré-chargé supprimé peut réapparaître au redémarrage suivant. `SEED_DISABLED=1` désactive tout
 
 - Vue mensuelle (semaine commençant le lundi), navigation mois précédent/suivant, bouton « Aujourd'hui »
 - Création d'un événement en cliquant sur un jour ou via le bouton « + Événement »

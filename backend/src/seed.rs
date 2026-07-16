@@ -18,7 +18,7 @@ use serde::Deserialize;
 
 use crate::entities::event::{self, Entity as Event};
 use crate::state::three_months_ago;
-use crate::{astro, f1, tmdb};
+use crate::{astro, astronomy, f1, tmdb};
 
 /// Static baseline: curated 2026 cinema releases + the 2026 F1 season as
 /// offline fallback (fireworks/astrology entries are generated instead).
@@ -26,11 +26,16 @@ const SEED_JSON: &str = include_str!("../seed_events.json");
 
 #[derive(Deserialize)]
 pub struct SeedCandidate {
-    /// "YYYY-MM-DD"
+    /// "YYYY-MM-DD" civil day in France — also the dedup key with the title
     pub date: String,
     pub title: String,
     pub description: Option<String>,
     pub color: Option<String>,
+    /// Precise UTC instant; None → all-day event (08:00Z–20:00Z)
+    #[serde(default)]
+    pub start: Option<String>,
+    #[serde(default)]
+    pub end: Option<String>,
 }
 
 /// Dedup key: lowercase alphanumeric title + date, so cosmetic differences
@@ -43,30 +48,42 @@ fn normalize(title: &str) -> String {
         .collect()
 }
 
+/// Paris civil day of a stored UTC instant. A full moon at 00:57 Paris is
+/// still the previous day in UTC, so a bare `start[..10]` would break the
+/// dedup key against candidates dated in Paris civil days.
+fn paris_day(start: &str) -> String {
+    match chrono::DateTime::parse_from_rfc3339(&start.replace('Z', "+00:00")) {
+        Ok(dt) => dt.with_timezone(&Paris).format("%Y-%m-%d").to_string(),
+        Err(_) => start.chars().take(10).collect(),
+    }
+}
+
 pub async fn seed(db: &DatabaseConnection) {
     if std::env::var("SEED_DISABLED").is_ok_and(|v| v == "1" || v == "true") {
         log::info!("seeding disabled by SEED_DISABLED");
         return;
     }
 
-    let mut candidates: Vec<SeedCandidate> = match serde_json::from_str(SEED_JSON) {
-        Ok(s) => s,
-        Err(e) => {
-            log::error!("invalid seed_events.json: {e}");
-            Vec::new()
-        }
-    };
-
+    // Generated events first: when the F1 API responds, its precisely timed
+    // races win over the all-day static fallback (color+date dedup below).
+    let mut candidates: Vec<SeedCandidate> = Vec::new();
     let year = chrono::Utc::now().with_timezone(&Paris).year();
     for y in [year, year + 1] {
         candidates.extend(astro::seasons(y));
         candidates.extend(astro::moon_phases(y));
         candidates.extend(astro::fireworks(y));
+        candidates.extend(astronomy::eclipses(y));
+        candidates.extend(astronomy::solstices_equinoxes(y));
+        candidates.extend(astronomy::meteor_showers(y));
         if let Some(races) = f1::fetch(y).await {
             candidates.extend(races);
         }
     }
     candidates.extend(tmdb::fetch().await);
+    match serde_json::from_str::<Vec<SeedCandidate>>(SEED_JSON) {
+        Ok(static_events) => candidates.extend(static_events),
+        Err(e) => log::error!("invalid seed_events.json: {e}"),
+    }
 
     // Index existing events once for dedup
     let existing = match Event::find().all(db).await {
@@ -80,7 +97,7 @@ pub async fn seed(db: &DatabaseConnection) {
     let mut f1_dates: HashSet<String> = HashSet::new();
     for ev in &existing {
         if ev.start.len() >= 10 {
-            let date = ev.start[..10].to_string();
+            let date = paris_day(&ev.start);
             seen_titles.insert((normalize(&ev.title), date.clone()));
             // F1 titles changed over time (static French list vs API), so
             // F1 events also dedup by color + date.
@@ -93,17 +110,21 @@ pub async fn seed(db: &DatabaseConnection) {
     let cutoff = three_months_ago();
     let mut inserted = 0usize;
     for c in candidates {
-        // 08:00–20:00 UTC stays within the same civil day in France
-        // (UTC+1/+2) whatever the season, so all-day events land on a
-        // single grid cell.
-        let start = format!("{}T08:00:00Z", c.date);
-        let end = format!("{}T20:00:00Z", c.date);
+        // Timed events carry their exact UTC instant; all-day events use
+        // 08:00–20:00 UTC, which stays within the same civil day in France
+        // (UTC+1/+2) whatever the season, so they land on a single grid cell.
+        let all_day = c.start.is_none();
+        let start = c.start.unwrap_or_else(|| format!("{}T08:00:00Z", c.date));
+        let end = c.end.unwrap_or_else(|| format!("{}T20:00:00Z", c.date));
         if end < cutoff {
             continue;
         }
         let is_f1 = c.color.as_deref() == Some(f1::F1_COLOR);
-        let key = (normalize(&c.title), c.date.clone());
-        if seen_titles.contains(&key) || (is_f1 && f1_dates.contains(&c.date)) {
+        // Key timed candidates by the Paris civil day of their instant, to
+        // stay consistent with how existing events are indexed above.
+        let day = if all_day { c.date.clone() } else { paris_day(&start) };
+        let key = (normalize(&c.title), day.clone());
+        if seen_titles.contains(&key) || (is_f1 && f1_dates.contains(&day)) {
             continue;
         }
         let active = event::ActiveModel {
@@ -111,7 +132,7 @@ pub async fn seed(db: &DatabaseConnection) {
             description: Set(c.description),
             start: Set(start),
             end: Set(end),
-            all_day: Set(true),
+            all_day: Set(all_day),
             color: Set(c.color),
             ..Default::default()
         };
@@ -120,7 +141,7 @@ pub async fn seed(db: &DatabaseConnection) {
                 inserted += 1;
                 seen_titles.insert(key);
                 if is_f1 {
-                    f1_dates.insert(c.date);
+                    f1_dates.insert(day);
                 }
             }
             Err(e) => log::warn!("failed to insert a seed event: {e}"),
