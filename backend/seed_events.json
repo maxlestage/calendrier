@@ -26,29 +26,5 @@
   { "date": "2026-07-29", "title": "🎬 Spider-Man : Brand New Day", "description": "Sortie France (2 jours avant les USA)", "color": "#8e44ad" },
   { "date": "2026-08-05", "title": "🎬 Pat' Patrouille : le film 3", "description": "Sortie France — île aux dinosaures", "color": "#8e44ad" },
   { "date": "2026-12-16", "title": "🎬 Avengers : Doomsday", "description": "Sortie France — Robert Downey Jr. en Docteur Doom", "color": "#8e44ad" },
-  { "date": "2026-12-16", "title": "🎬 Dune : Troisième Partie", "description": "Sortie France — conclusion de la trilogie de Denis Villeneuve", "color": "#8e44ad" },
-
-  { "date": "2026-07-14", "title": "🎆 Feu d'artifice du 14 Juillet", "description": "Fête nationale — feux dans toute la France (souvent aussi le 13 au soir)", "color": "#f4a300" },
-  { "date": "2026-08-15", "title": "🎆 Feux d'artifice du 15 août", "description": "Assomption — feux dans de nombreuses communes", "color": "#f4a300" },
-  { "date": "2026-12-31", "title": "🎆 Feux d'artifice de la Saint-Sylvestre", "description": "Nouvel An", "color": "#f4a300" },
-
-  { "date": "2026-07-23", "title": "♌ Début de la saison du Lion", "description": "Astrologie — le Soleil entre en Lion", "color": "#0aa3a3" },
-  { "date": "2026-08-23", "title": "♍ Début de la saison de la Vierge", "description": "Astrologie — le Soleil entre en Vierge", "color": "#0aa3a3" },
-  { "date": "2026-09-23", "title": "♎ Début de la saison de la Balance", "description": "Astrologie — équinoxe d'automne", "color": "#0aa3a3" },
-  { "date": "2026-10-23", "title": "♏ Début de la saison du Scorpion", "description": "Astrologie — le Soleil entre en Scorpion", "color": "#0aa3a3" },
-  { "date": "2026-11-22", "title": "♐ Début de la saison du Sagittaire", "description": "Astrologie — le Soleil entre en Sagittaire", "color": "#0aa3a3" },
-  { "date": "2026-12-21", "title": "♑ Début de la saison du Capricorne", "description": "Astrologie — solstice d'hiver", "color": "#0aa3a3" },
-
-  { "date": "2026-07-25", "title": "🌑 Nouvelle lune en Lion", "description": "Astrologie — 17h11", "color": "#0aa3a3" },
-  { "date": "2026-07-29", "title": "🌕 Pleine lune en Verseau", "description": "Astrologie — 16h35", "color": "#0aa3a3" },
-  { "date": "2026-08-24", "title": "🌑 Nouvelle lune en Vierge", "description": "Astrologie — 00h06", "color": "#0aa3a3" },
-  { "date": "2026-08-28", "title": "🌕 Pleine lune en Poissons", "description": "Astrologie — 06h18", "color": "#0aa3a3" },
-  { "date": "2026-09-22", "title": "🌑 Nouvelle lune en Vierge", "description": "Astrologie — 08h54", "color": "#0aa3a3" },
-  { "date": "2026-09-26", "title": "🌕 Pleine lune en Bélier", "description": "Astrologie — 18h49", "color": "#0aa3a3" },
-  { "date": "2026-10-21", "title": "🌑 Nouvelle lune en Balance", "description": "Astrologie — 21h25", "color": "#0aa3a3" },
-  { "date": "2026-10-26", "title": "🌕 Pleine lune en Taureau", "description": "Astrologie — 05h11", "color": "#0aa3a3" },
-  { "date": "2026-11-20", "title": "🌑 Nouvelle lune en Scorpion", "description": "Astrologie — 14h47", "color": "#0aa3a3" },
-  { "date": "2026-11-24", "title": "🌕 Pleine lune en Gémeaux", "description": "Astrologie — 21h28", "color": "#0aa3a3" },
-  { "date": "2026-12-20", "title": "🌑 Nouvelle lune en Sagittaire", "description": "Astrologie — 09h43", "color": "#0aa3a3" },
-  { "date": "2026-12-24", "title": "🌕 Pleine lune en Cancer", "description": "Astrologie — 02h28", "color": "#0aa3a3" }
+  { "date": "2026-12-16", "title": "🎬 Dune : Troisième Partie", "description": "Sortie France — conclusion de la trilogie de Denis Villeneuve", "color": "#8e44ad" }
 ]
