@@ -1,0 +1,17 @@
+{
+  "name": "Calendrier",
+  "description": "Calendrier full-stack : frontend React/TypeScript servi par un backend Rust (Actix Web + SeaORM)",
+  "keywords": ["calendar", "rust", "actix", "react", "seaorm"],
+  "buildpacks": [
+    { "url": "heroku/nodejs" },
+    { "url": "https://github.com/emk/heroku-buildpack-rust" }
+  ],
+  "addons": ["heroku-postgresql"],
+  "env": {
+    "RUST_LOG": {
+      "description": "Niveau de log du backend",
+      "value": "info",
+      "required": false
+    }
+  }
+}
