@@ -110,6 +110,17 @@ Corps JSON pour `POST`/`PUT` :
 }
 ```
 
+## App iOS native
+
+Une app **SwiftUI** (iOS 17+) connectée au même backend se trouve dans
+[`ios/`](ios/README.md) : grille mensuelle, agenda du jour, création/édition,
+URL du serveur configurable dans l'app. Nécessite un Mac avec Xcode 16+ pour
+compiler (voir le README dédié).
+
+En attendant, le front web est une **PWA** : ouvre le site dans Safari →
+bouton Partager → « Sur l'écran d'accueil » pour l'installer en plein écran
+avec son icône, comme une app native.
+
 ## Structure
 
 ```
