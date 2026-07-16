@@ -1,6 +1,8 @@
+mod backup;
 mod entities;
 mod handlers;
 mod migration;
+mod state;
 
 use actix_cors::Cors;
 use actix_files::{Files, NamedFile};
@@ -25,6 +27,12 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("failed to run migrations");
 
+    // If a previous dyno saved a backup config var, seed the (empty) database
+    // from it, then load the last three months into the in-memory snapshot.
+    backup::restore_from_env(&db).await;
+    let snapshot = web::Data::new(state::Snapshot::new());
+    snapshot.refresh(&db).await;
+
     let host = std::env::var("HOST").unwrap_or_else(|_| "0.0.0.0".into());
     let port: u16 = std::env::var("PORT")
         .ok()
@@ -45,9 +53,13 @@ async fn main() -> std::io::Result<()> {
     log::info!("listening on http://{host}:{port}");
 
     let db_data = web::Data::new(db);
-    HttpServer::new(move || {
+    let server = {
+        let db_data = db_data.clone();
+        let snapshot = snapshot.clone();
+        HttpServer::new(move || {
         let mut app = App::new()
             .app_data(db_data.clone())
+            .app_data(snapshot.clone())
             .wrap(Cors::permissive())
             .service(
                 web::scope("/api")
@@ -55,7 +67,8 @@ async fn main() -> std::io::Result<()> {
                     .service(handlers::get_event)
                     .service(handlers::create_event)
                     .service(handlers::update_event)
-                    .service(handlers::delete_event),
+                    .service(handlers::delete_event)
+                    .service(handlers::export_events),
             );
         if serve_static {
             let index = std::path::Path::new(&static_dir).join("index.html");
@@ -75,8 +88,17 @@ async fn main() -> std::io::Result<()> {
             );
         }
         app
-    })
-    .bind((host, port))?
-    .run()
-    .await
+        })
+        .bind((host, port))?
+        .run()
+    };
+
+    // Blocks until shutdown. Heroku sends SIGTERM before replacing a dyno;
+    // actix stops gracefully and we get a chance to persist the snapshot.
+    server.await?;
+
+    log::info!("shutting down, backing up events");
+    snapshot.refresh(db_data.get_ref()).await;
+    backup::push_to_heroku(&snapshot.events()).await;
+    Ok(())
 }
