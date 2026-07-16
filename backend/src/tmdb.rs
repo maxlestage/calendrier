@@ -74,6 +74,8 @@ pub async fn fetch() -> Vec<SeedCandidate> {
             title: format!("🎬 {}", m.title),
             description: Some("Sortie cinéma France".into()),
             color: Some(CINEMA_COLOR.into()),
+            start: None,
+            end: None,
         })
         .collect();
     if !events.is_empty() {

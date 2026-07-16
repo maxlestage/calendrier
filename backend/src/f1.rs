@@ -30,8 +30,26 @@ struct Race {
     #[serde(rename = "raceName")]
     race_name: String,
     date: String,
+    /// Race start, e.g. "13:00:00Z"
+    time: Option<String>,
     #[serde(rename = "Circuit")]
     circuit: Circuit,
+    #[serde(rename = "Sprint")]
+    sprint: Option<Session>,
+}
+
+#[derive(Deserialize)]
+struct Session {
+    date: String,
+    time: Option<String>,
+}
+
+/// ("YYYY-MM-DD", "HH:MM:SSZ", hours) → (startISO, endISO)
+fn timed(date: &str, time: &str, duration_h: i64) -> Option<(String, String)> {
+    let start = format!("{date}T{time}");
+    let parsed = chrono::DateTime::parse_from_rfc3339(&start.replace('Z', "+00:00")).ok()?;
+    let end = parsed + chrono::Duration::hours(duration_h);
+    Some((start, end.format("%Y-%m-%dT%H:%M:%SZ").to_string()))
 }
 
 #[derive(Deserialize)]
@@ -116,18 +134,43 @@ pub async fn fetch(year: i32) -> Option<Vec<SeedCandidate>> {
         return None;
     }
     log::info!("fetched {} F1 races for {year}", races.len());
-    Some(
-        races
-            .into_iter()
-            .map(|r| SeedCandidate {
-                date: r.date,
-                title: format!("🏎️ {}", french_name(&r.race_name)),
+    let mut events = Vec::new();
+    for r in races {
+        let name = french_name(&r.race_name);
+        // Grand Prix race, with its exact start time when the API has it
+        let (start, end) = match r.time.as_deref().and_then(|t| timed(&r.date, t, 2)) {
+            Some((s, e)) => (Some(s), Some(e)),
+            None => (None, None),
+        };
+        events.push(SeedCandidate {
+            date: r.date.clone(),
+            title: format!("🏎️ {name}"),
+            description: Some(format!(
+                "F1 {year} — {}, {}",
+                r.circuit.circuit_name, r.circuit.location.locality
+            )),
+            color: Some(F1_COLOR.into()),
+            start,
+            end,
+        });
+        // Sprint race (Saturday), when the weekend has one
+        if let Some(sprint) = r.sprint {
+            let (start, end) = match sprint.time.as_deref().and_then(|t| timed(&sprint.date, t, 1)) {
+                Some((s, e)) => (Some(s), Some(e)),
+                None => (None, None),
+            };
+            events.push(SeedCandidate {
+                date: sprint.date,
+                title: format!("🏎️ Sprint — {name}"),
                 description: Some(format!(
-                    "F1 {year} — {}, {}",
-                    r.circuit.circuit_name, r.circuit.location.locality
+                    "F1 {year} — course sprint, {}",
+                    r.circuit.circuit_name
                 )),
                 color: Some(F1_COLOR.into()),
-            })
-            .collect(),
-    )
+                start,
+                end,
+            });
+        }
+    }
+    Some(events)
 }
