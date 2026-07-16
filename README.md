@@ -2,20 +2,24 @@
 
 Application de calendrier full-stack :
 
-- **Frontend** : React 18 + TypeScript, exécuté avec [Bun](https://bun.sh) (Vite comme bundler/dev server)
-- **Backend** : Rust, [Actix Web](https://actix.rs) + [SeaORM](https://www.sea-ql.org/SeaORM/) (SQLite en local, PostgreSQL sur Heroku)
+- **Frontend** : React 18 + TypeScript **mobile-first**, exécuté avec [Bun](https://bun.sh) (Vite comme bundler/dev server)
+- **Backend** : Rust, [Actix Web](https://actix.rs) + [SeaORM](https://www.sea-ql.org/SeaORM/) (SQLite)
 
 ## Déploiement Heroku en un tap 🚀
 
 [![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/maxlestage/calendrier)
 
-Le bouton crée l'application, provisionne une base **Heroku Postgres**, builde le
-frontend (buildpack Node.js) puis le backend (buildpack Rust), et démarre un seul
-dyno : le binaire Rust sert l'API **et** le frontend buildé. Les migrations
-s'exécutent automatiquement au démarrage — rien d'autre à faire.
+Le bouton crée l'application, builde le frontend (buildpack Node.js) puis le
+backend (buildpack Rust), et démarre un seul dyno : le binaire Rust sert l'API
+**et** le frontend buildé. Les migrations s'exécutent automatiquement au
+démarrage — rien d'autre à faire.
 
-> Nécessite un compte Heroku (les dynos Eco et Postgres Essential sont payants,
-> il n'y a plus d'offre gratuite chez Heroku).
+> ⚠️ La base est **SQLite sur le disque du dyno**, qui est éphémère chez
+> Heroku : les événements sont perdus à chaque redémarrage du dyno (au moins
+> une fois par jour). Pratique pour une démo, pas pour des données durables.
+
+> Nécessite un compte Heroku (les dynos sont payants, il n'y a plus d'offre
+> gratuite chez Heroku).
 
 Pour des déploiements continus ensuite : dashboard Heroku → l'app → onglet
 **Deploy** → « Connect to GitHub » → activer *Automatic deploys* sur `master`.
@@ -41,7 +45,7 @@ Variables d'environnement optionnelles :
 
 | Variable | Défaut | Description |
 | --- | --- | --- |
-| `DATABASE_URL` | `sqlite://calendar.db?mode=rwc` | URL de la base (SQLite ou PostgreSQL) |
+| `DATABASE_URL` | `sqlite://calendar.db?mode=rwc` | URL de la base SQLite |
 | `HOST` | `0.0.0.0` | Adresse d'écoute |
 | `PORT` | `8080` | Port d'écoute |
 | `STATIC_DIR` | `frontend/dist` | Dossier du frontend buildé (servi s'il existe, avec fallback SPA) |
@@ -82,7 +86,7 @@ Corps JSON pour `POST`/`PUT` :
 ## Structure
 
 ```
-app.json            # Config du bouton « Deploy to Heroku » (buildpacks, addon Postgres)
+app.json            # Config du bouton « Deploy to Heroku » (buildpacks)
 Procfile            # Commande du dyno web (binaire Rust)
 Cargo.toml          # Workspace Cargo (racine, requis par le buildpack Rust)
 package.json        # Script heroku-postbuild qui builde le frontend
