@@ -1,0 +1,82 @@
+mod entities;
+mod handlers;
+mod migration;
+
+use actix_cors::Cors;
+use actix_files::{Files, NamedFile};
+use actix_web::dev::{ServiceRequest, ServiceResponse};
+use actix_web::{web, App, HttpServer};
+use migration::Migrator;
+use sea_orm::Database;
+use sea_orm_migration::MigratorTrait;
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+
+    // On Heroku, DATABASE_URL is a postgres:// URL provided by the addon;
+    // locally we fall back to a SQLite file.
+    let db_url =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://calendar.db?mode=rwc".into());
+    let db = Database::connect(&db_url)
+        .await
+        .expect("failed to connect to database");
+    Migrator::up(&db, None)
+        .await
+        .expect("failed to run migrations");
+
+    let host = std::env::var("HOST").unwrap_or_else(|_| "0.0.0.0".into());
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(8080);
+
+    // Directory of the built frontend (frontend/dist). When present, the
+    // backend serves the SPA itself so a single process serves everything.
+    let static_dir =
+        std::env::var("STATIC_DIR").unwrap_or_else(|_| "frontend/dist".into());
+    let serve_static = std::path::Path::new(&static_dir).join("index.html").exists();
+    if serve_static {
+        log::info!("serving frontend from {static_dir}");
+    } else {
+        log::info!("no frontend build found at {static_dir}, running API-only");
+    }
+
+    log::info!("listening on http://{host}:{port}");
+
+    let db_data = web::Data::new(db);
+    HttpServer::new(move || {
+        let mut app = App::new()
+            .app_data(db_data.clone())
+            .wrap(Cors::permissive())
+            .service(
+                web::scope("/api")
+                    .service(handlers::list_events)
+                    .service(handlers::get_event)
+                    .service(handlers::create_event)
+                    .service(handlers::update_event)
+                    .service(handlers::delete_event),
+            );
+        if serve_static {
+            let index = std::path::Path::new(&static_dir).join("index.html");
+            app = app.service(
+                Files::new("/", &static_dir)
+                    .index_file("index.html")
+                    // SPA fallback: unknown paths get index.html
+                    .default_handler(move |req: ServiceRequest| {
+                        let index = index.clone();
+                        async move {
+                            let (req, _) = req.into_parts();
+                            let file = NamedFile::open_async(index).await?;
+                            let res = file.into_response(&req);
+                            Ok(ServiceResponse::new(req, res))
+                        }
+                    }),
+            );
+        }
+        app
+    })
+    .bind((host, port))?
+    .run()
+    .await
+}
