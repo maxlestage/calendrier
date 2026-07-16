@@ -1,9 +1,12 @@
+mod astro;
 mod backup;
 mod entities;
+mod f1;
 mod handlers;
 mod migration;
 mod seed;
 mod state;
+mod tmdb;
 
 use actix_cors::Cors;
 use actix_files::{Files, NamedFile};
