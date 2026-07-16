@@ -2,6 +2,7 @@ mod backup;
 mod entities;
 mod handlers;
 mod migration;
+mod seed;
 mod state;
 
 use actix_cors::Cors;
@@ -30,6 +31,7 @@ async fn main() -> std::io::Result<()> {
     // If a previous dyno saved a backup config var, seed the (empty) database
     // from it, then load the last three months into the in-memory snapshot.
     backup::restore_from_env(&db).await;
+    seed::seed(&db).await;
     let snapshot = web::Data::new(state::Snapshot::new());
     snapshot.refresh(&db).await;
 
