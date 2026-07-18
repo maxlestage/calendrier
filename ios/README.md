@@ -51,6 +51,45 @@ permission puis programme un rappel **1 h avant** chaque événement horodaté
 et **à 9 h** le jour même pour les événements « journée entière »
 (60 prochains événements max, re-programmés à chaque rafraîchissement).
 
+## CI TestFlight (sans Mac !)
+
+Deux workflows GitHub Actions permettent de livrer l'app sur **TestFlight
+entièrement depuis le cloud** — aucun Mac nécessaire, tout se pilote depuis
+un téléphone. Prérequis : un compte **Apple Developer Program payant**
+(99 €/an, TestFlight n'existe pas pour les comptes gratuits).
+
+### Mise en place (une seule fois, ~15 min depuis un navigateur)
+
+1. **Clé API App Store Connect** : [appstoreconnect.apple.com](https://appstoreconnect.apple.com)
+   → Users and Access → Integrations → App Store Connect API → « + » (rôle
+   *App Manager*). Note le **Key ID**, l'**Issuer ID**, télécharge le `.p8`
+2. **Secrets GitHub** (repo → Settings → Secrets and variables → Actions) :
+   - `APPSTORE_KEY_ID` — le Key ID
+   - `APPSTORE_ISSUER_ID` — l'Issuer ID
+   - `APPSTORE_P8` — le contenu du fichier `.p8` (texte)
+   - `APPLE_TEAM_ID` — le Team ID (Membership details du compte développeur)
+3. **Certificat de distribution sans Mac** : Actions → « iOS — Créer le
+   certificat de distribution » → *Run workflow* en choisissant un mot de
+   passe. Le résumé du job affiche le `.p12` en base64 → colle-le dans le
+   secret `DIST_CERT_BASE64`, et le mot de passe dans `DIST_CERT_PASSWORD`
+   (limite Apple : 2-3 certificats de distribution — réutilise-le, ne le
+   régénère pas à chaque fois)
+4. **Déclarer l'app** : [developer.apple.com](https://developer.apple.com/account)
+   → Identifiers → « + » :
+   - App ID `com.maxlestage.calendrier` (capacité App Groups)
+   - App ID `com.maxlestage.calendrier.CalendrierWidget` (App Groups)
+   - App Group `group.com.maxlestage.calendrier`
+   Puis App Store Connect → Apps → « + » → nouvelle app iOS avec le bundle
+   ID `com.maxlestage.calendrier`
+
+### Utilisation
+
+Chaque push sur `master` touchant `ios/**` (ou un *Run workflow* manuel)
+archive, signe et téléverse un build : workflow **TestFlight**. Le numéro de
+build = numéro du run. Après 5-30 min de traitement Apple, le build apparaît
+dans App Store Connect → TestFlight, et l'app s'installe sur l'iPhone via
+l'app TestFlight (testeur interne = pas de review Apple).
+
 ## Structure
 
 ```
