@@ -1,0 +1,110 @@
+name: iOS — Créer le certificat de distribution (bootstrap, sans Mac)
+
+# À lancer UNE FOIS à la main (Actions → ce workflow → Run workflow).
+# Crée un certificat Apple Distribution via l'API App Store Connect et
+# produit le .p12 encodé en base64 à coller dans le secret DIST_CERT_BASE64.
+# Nécessite les secrets APPSTORE_KEY_ID, APPSTORE_ISSUER_ID, APPSTORE_P8.
+
+on:
+  workflow_dispatch:
+    inputs:
+      p12_password:
+        description: "Mot de passe du .p12 (à recopier dans le secret DIST_CERT_PASSWORD)"
+        required: true
+        type: string
+
+jobs:
+  create-certificate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check required secrets
+        run: |
+          missing=""
+          [ -z "${{ secrets.APPSTORE_KEY_ID }}" ] && missing="$missing APPSTORE_KEY_ID"
+          [ -z "${{ secrets.APPSTORE_ISSUER_ID }}" ] && missing="$missing APPSTORE_ISSUER_ID"
+          [ -z "${{ secrets.APPSTORE_P8 }}" ] && missing="$missing APPSTORE_P8"
+          if [ -n "$missing" ]; then
+            echo "::error::Secrets manquants :$missing"
+            exit 1
+          fi
+
+      - name: Generate private key and CSR
+        run: |
+          openssl genrsa -out dist.key 2048
+          openssl req -new -key dist.key -out dist.csr \
+            -subj "/CN=Calendrier CI Distribution/O=maxlestage"
+
+      - name: Create certificate via App Store Connect API
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_P8: ${{ secrets.APPSTORE_P8 }}
+        run: |
+          pip install --quiet pyjwt cryptography requests
+          python3 <<'PY'
+          import json
+          import os
+          import time
+
+          import jwt
+          import requests
+
+          token = jwt.encode(
+              {
+                  "iss": os.environ["APPSTORE_ISSUER_ID"],
+                  "iat": int(time.time()) - 30,
+                  "exp": int(time.time()) + 600,
+                  "aud": "appstoreconnect-v1",
+              },
+              os.environ["APPSTORE_P8"],
+              algorithm="ES256",
+              headers={"kid": os.environ["APPSTORE_KEY_ID"], "typ": "JWT"},
+          )
+          csr = open("dist.csr").read()
+          response = requests.post(
+              "https://api.appstoreconnect.apple.com/v1/certificates",
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Content-Type": "application/json",
+              },
+              json={
+                  "data": {
+                      "type": "certificates",
+                      "attributes": {
+                          "certificateType": "DISTRIBUTION",
+                          "csrContent": csr,
+                      },
+                  }
+              },
+              timeout=30,
+          )
+          if response.status_code != 201:
+              print(f"::error::API App Store Connect: {response.status_code} {response.text}")
+              raise SystemExit(1)
+          content = response.json()["data"]["attributes"]["certificateContent"]
+          import base64
+          open("dist.cer", "wb").write(base64.b64decode(content))
+          print("certificate created:", response.json()["data"]["id"])
+          PY
+
+      - name: Bundle .p12 and print base64
+        env:
+          P12_PASSWORD: ${{ inputs.p12_password }}
+        run: |
+          openssl x509 -inform DER -in dist.cer -out dist.pem
+          openssl pkcs12 -export -inkey dist.key -in dist.pem \
+            -out dist.p12 -passout env:P12_PASSWORD
+          {
+            echo "## ✅ Certificat créé"
+            echo ""
+            echo "1. Copie le bloc ci-dessous dans le secret **DIST_CERT_BASE64**"
+            echo "   (Settings → Secrets and variables → Actions)"
+            echo "2. Mets le mot de passe choisi dans le secret **DIST_CERT_PASSWORD**"
+            echo ""
+            echo '```'
+            base64 -w 0 dist.p12
+            echo ""
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          rm dist.key dist.p12
