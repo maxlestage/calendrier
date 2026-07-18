@@ -45,7 +45,7 @@ Pour des déploiements continus ensuite : dashboard Heroku → l'app → onglet
 ## Fonctionnalités
 
 - **Événements thématiques générés à chaque démarrage**, pour l'année en cours **et** la suivante :
-  - 🏎️ **F1** (rouge) : calendrier récupéré depuis l'[API Jolpica](https://api.jolpi.ca) (successeur d'Ergast, sans clé) à chaque démarrage, avec **heure de départ exacte des courses et des sprints** ; repli sur la saison 2026 embarquée (journée entière) si hors-ligne
+  - 🏎️ **F1** (rouge) : calendrier récupéré depuis l'[API Jolpica](https://api.jolpi.ca) (successeur d'Ergast, sans clé) à chaque démarrage, avec **heures exactes des courses, qualifications, sprints et qualifs sprint** ; repli sur la saison 2026 embarquée (journée entière) si hors-ligne
   - 🔭 **Astronomie** (bleu nuit) : **éclipses solaires et lunaires calculées** (Meeus ch. 54, types total/annulaire/partiel validés contre le catalogue NASA), équinoxes et solstices à la minute (Meeus ch. 27), pics des essaims de météores (Perséides, Géminides…)
   - ✨ **Astrologie** (turquoise) : débuts des saisons zodiacales + **pleines et nouvelles lunes calculées** à l'instant exact (Meeus ch. 49, validé contre les éphémérides)
   - 🎆 **Feux d'artifice** (orange) : 14 Juillet, 15 août, Saint-Sylvestre — horaires de soirée (~22h30)
