@@ -33,6 +33,24 @@ Note : iOS exige HTTPS (App Transport Security). Le backend Heroku est en
 HTTPS, donc rien à faire. Pour tester contre un backend local en HTTP, il
 faudrait ajouter une exception ATS dans les réglages du projet.
 
+## Widget d'écran d'accueil
+
+La cible **CalendrierWidget** fournit un widget (petit et moyen) « Prochains
+événements » : appui long sur l'écran d'accueil → « + » → Calendrier. Le
+widget lit l'URL du serveur via l'App Group `group.com.maxlestage.calendrier`
+(partagé avec l'app) et se rafraîchit environ toutes les 30 minutes.
+
+Si la signature refuse l'App Group (selon le type de compte), supprime la
+capacité « App Groups » des deux cibles : le widget utilisera alors l'URL
+par défaut codée dans `CalendrierWidget.swift` (à adapter).
+
+## Notifications
+
+Réglages (⚙️) → « Notifications avant les événements » : demande la
+permission puis programme un rappel **1 h avant** chaque événement horodaté
+et **à 9 h** le jour même pour les événements « journée entière »
+(60 prochains événements max, re-programmés à chaque rafraîchissement).
+
 ## Structure
 
 ```
@@ -47,5 +65,11 @@ Calendrier/
     MonthGridView.swift      # Grille 6 semaines, lundi en premier, pastilles
     DayAgendaView.swift      # Liste des événements du jour
     EventFormView.swift      # Formulaire création/édition (Form + sheet)
-    SettingsView.swift       # URL du serveur
+    SettingsView.swift       # URL du serveur + rappels
+  Notifications.swift        # Programmation des rappels locaux
+  Calendrier.entitlements    # App Group (partage de l'URL avec le widget)
+CalendrierWidget/
+  CalendrierWidget.swift     # Widget « Prochains événements » (small/medium)
+  Info.plist                 # Point d'extension WidgetKit
+  CalendrierWidget.entitlements
 ```
