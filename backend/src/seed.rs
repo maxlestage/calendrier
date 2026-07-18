@@ -124,7 +124,10 @@ pub async fn seed(db: &DatabaseConnection) {
         // stay consistent with how existing events are indexed above.
         let day = if all_day { c.date.clone() } else { paris_day(&start) };
         let key = (normalize(&c.title), day.clone());
-        if seen_titles.contains(&key) || (is_f1 && f1_dates.contains(&day)) {
+        // The color+date rule only guards the all-day static F1 fallback
+        // against the API's timed events: several timed F1 sessions can
+        // legitimately share a day (sprint + qualifying on Saturday).
+        if seen_titles.contains(&key) || (is_f1 && all_day && f1_dates.contains(&day)) {
             continue;
         }
         let active = event::ActiveModel {
