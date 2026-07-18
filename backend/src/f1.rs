@@ -36,6 +36,10 @@ struct Race {
     circuit: Circuit,
     #[serde(rename = "Sprint")]
     sprint: Option<Session>,
+    #[serde(rename = "Qualifying")]
+    qualifying: Option<Session>,
+    #[serde(rename = "SprintQualifying")]
+    sprint_qualifying: Option<Session>,
 }
 
 #[derive(Deserialize)]
@@ -153,19 +157,37 @@ pub async fn fetch(year: i32) -> Option<Vec<SeedCandidate>> {
             start,
             end,
         });
-        // Sprint race (Saturday), when the weekend has one
-        if let Some(sprint) = r.sprint {
-            let (start, end) = match sprint.time.as_deref().and_then(|t| timed(&sprint.date, t, 1)) {
+        // Secondary sessions of the weekend, when the API has them
+        let sessions: [(Option<Session>, String, String); 3] = [
+            (
+                r.qualifying,
+                format!("🏎️ Qualifs — {name}"),
+                format!("F1 {year} — qualifications, {}", r.circuit.circuit_name),
+            ),
+            (
+                r.sprint,
+                format!("🏎️ Sprint — {name}"),
+                format!("F1 {year} — course sprint, {}", r.circuit.circuit_name),
+            ),
+            (
+                r.sprint_qualifying,
+                format!("🏎️ Qualifs sprint — {name}"),
+                format!(
+                    "F1 {year} — qualifications sprint, {}",
+                    r.circuit.circuit_name
+                ),
+            ),
+        ];
+        for (session, title, description) in sessions {
+            let Some(session) = session else { continue };
+            let (start, end) = match session.time.as_deref().and_then(|t| timed(&session.date, t, 1)) {
                 Some((s, e)) => (Some(s), Some(e)),
                 None => (None, None),
             };
             events.push(SeedCandidate {
-                date: sprint.date,
-                title: format!("🏎️ Sprint — {name}"),
-                description: Some(format!(
-                    "F1 {year} — course sprint, {}",
-                    r.circuit.circuit_name
-                )),
+                date: session.date,
+                title,
+                description: Some(description),
                 color: Some(F1_COLOR.into()),
                 start,
                 end,
