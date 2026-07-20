@@ -18,7 +18,7 @@ use serde::Deserialize;
 
 use crate::entities::event::{self, Entity as Event};
 use crate::state::three_months_ago;
-use crate::{astro, astronomy, f1, tmdb};
+use crate::{astro, astronomy, f1, tides, tmdb};
 
 /// Static baseline: curated 2026 cinema releases + the 2026 F1 season as
 /// offline fallback (fireworks/astrology entries are generated instead).
@@ -55,6 +55,18 @@ fn paris_day(start: &str) -> String {
     match chrono::DateTime::parse_from_rfc3339(&start.replace('Z', "+00:00")) {
         Ok(dt) => dt.with_timezone(&Paris).format("%Y-%m-%d").to_string(),
         Err(_) => start.chars().take(10).collect(),
+    }
+}
+
+/// Dedup slot: all-day events key on their Paris civil day, timed events on
+/// their exact instant (minute). Two same-titled timed events on one day —
+/// e.g. two high tides — must not collapse into one, so day granularity is
+/// wrong for them.
+fn dedup_slot(start: &str, all_day: bool) -> String {
+    if all_day {
+        paris_day(start)
+    } else {
+        start.chars().take(16).collect() // YYYY-MM-DDTHH:MM
     }
 }
 
@@ -95,16 +107,52 @@ pub async fn seed(db: &DatabaseConnection) {
     };
     let mut seen_titles: HashSet<(String, String)> = HashSet::new();
     let mut f1_dates: HashSet<String> = HashSet::new();
+    // Latest stored tide instant per port name, to avoid re-querying the
+    // (quota-limited) tide API while the horizon is still comfortable.
+    let mut tide_horizon: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     for ev in &existing {
         if ev.start.len() >= 10 {
-            let date = paris_day(&ev.start);
-            seen_titles.insert((normalize(&ev.title), date.clone()));
+            seen_titles.insert((normalize(&ev.title), dedup_slot(&ev.start, ev.all_day)));
             // F1 titles changed over time (static French list vs API), so
-            // F1 events also dedup by color + date.
+            // F1 events also dedup by color + Paris day.
             if ev.color.as_deref() == Some(f1::F1_COLOR) {
-                f1_dates.insert(date);
+                f1_dates.insert(paris_day(&ev.start));
+            }
+            if ev.color.as_deref() == Some(tides::TIDE_COLOR) {
+                // "🌊 Brest — Pleine mer" → port name before the em dash
+                if let Some(port) = ev.title.split(" — ").next() {
+                    let port = port.trim_start_matches("🌊").trim().to_string();
+                    tide_horizon
+                        .entry(port)
+                        .and_modify(|cur| {
+                            if ev.start > *cur {
+                                *cur = ev.start.clone();
+                            }
+                        })
+                        .or_insert_with(|| ev.start.clone());
+                }
             }
         }
+    }
+
+    // Fetch tides only for ports whose stored horizon runs out within the
+    // next half-window (keeps API usage low: roughly one refresh per horizon).
+    let now = chrono::Utc::now();
+    let refresh_before = (now + chrono::Duration::days(tides::horizon_days() / 2 + 1))
+        .format("%Y-%m-%dT%H:%M:%SZ")
+        .to_string();
+    let ports_needing: Vec<&tides::Port> = tides::enabled_ports()
+        .into_iter()
+        .filter(|p| {
+            tide_horizon
+                .get(p.name)
+                .map(|latest| latest < &refresh_before)
+                .unwrap_or(true)
+        })
+        .collect();
+    if !ports_needing.is_empty() {
+        let tide_events = tides::fetch(&ports_needing, now.timestamp()).await;
+        candidates.extend(tide_events);
     }
 
     let cutoff = three_months_ago();
@@ -120,14 +168,13 @@ pub async fn seed(db: &DatabaseConnection) {
             continue;
         }
         let is_f1 = c.color.as_deref() == Some(f1::F1_COLOR);
-        // Key timed candidates by the Paris civil day of their instant, to
-        // stay consistent with how existing events are indexed above.
-        let day = if all_day { c.date.clone() } else { paris_day(&start) };
-        let key = (normalize(&c.title), day.clone());
+        let slot = dedup_slot(&start, all_day);
+        let pday = paris_day(&start);
+        let key = (normalize(&c.title), slot);
         // The color+date rule only guards the all-day static F1 fallback
         // against the API's timed events: several timed F1 sessions can
         // legitimately share a day (sprint + qualifying on Saturday).
-        if seen_titles.contains(&key) || (is_f1 && all_day && f1_dates.contains(&day)) {
+        if seen_titles.contains(&key) || (is_f1 && all_day && f1_dates.contains(&pday)) {
             continue;
         }
         let active = event::ActiveModel {
@@ -144,7 +191,7 @@ pub async fn seed(db: &DatabaseConnection) {
                 inserted += 1;
                 seen_titles.insert(key);
                 if is_f1 {
-                    f1_dates.insert(day);
+                    f1_dates.insert(pday);
                 }
             }
             Err(e) => log::warn!("failed to insert a seed event: {e}"),
