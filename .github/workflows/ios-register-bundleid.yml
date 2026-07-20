@@ -1,0 +1,108 @@
+name: iOS — Enregistrer un bundle ID (bootstrap, sans Mac)
+
+# À lancer à la main (Actions → ce workflow → Run workflow).
+# Enregistre un bundle ID sur le portail Apple via l'API App Store Connect —
+# nécessaire pour les EXTENSIONS (widget) : la signature automatique de
+# Xcode Cloud sait créer des profils pour un bundle ID existant mais ne peut
+# pas créer le bundle ID d'une extension elle-même
+# (« Automatic signing cannot register bundle identifier … »).
+# Nécessite les secrets APPSTORE_KEY_ID, APPSTORE_ISSUER_ID, APPSTORE_P8.
+
+on:
+  workflow_dispatch:
+    inputs:
+      identifier:
+        description: "Bundle ID à enregistrer"
+        required: true
+        default: "com.maxlestage.calendrier.CalendrierWidget"
+        type: string
+      name:
+        description: "Nom lisible de l'identifiant"
+        required: true
+        default: "Calendrier Widget"
+        type: string
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check required secrets
+        run: |
+          missing=""
+          [ -z "${{ secrets.APPSTORE_KEY_ID }}" ] && missing="$missing APPSTORE_KEY_ID"
+          [ -z "${{ secrets.APPSTORE_ISSUER_ID }}" ] && missing="$missing APPSTORE_ISSUER_ID"
+          [ -z "${{ secrets.APPSTORE_P8 }}" ] && missing="$missing APPSTORE_P8"
+          if [ -n "$missing" ]; then
+            echo "::error::Secrets manquants :$missing — voir ios/README.md"
+            exit 1
+          fi
+
+      - name: Register bundle ID via App Store Connect API
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_P8: ${{ secrets.APPSTORE_P8 }}
+          BUNDLE_IDENTIFIER: ${{ inputs.identifier }}
+          BUNDLE_NAME: ${{ inputs.name }}
+        run: |
+          pip install --quiet pyjwt cryptography requests
+          python3 <<'PY'
+          import os
+          import time
+
+          import jwt
+          import requests
+
+          token = jwt.encode(
+              {
+                  "iss": os.environ["APPSTORE_ISSUER_ID"],
+                  "iat": int(time.time()) - 30,
+                  "exp": int(time.time()) + 600,
+                  "aud": "appstoreconnect-v1",
+              },
+              os.environ["APPSTORE_P8"],
+              algorithm="ES256",
+              headers={"kid": os.environ["APPSTORE_KEY_ID"], "typ": "JWT"},
+          )
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Content-Type": "application/json",
+          }
+          identifier = os.environ["BUNDLE_IDENTIFIER"]
+
+          existing = requests.get(
+              "https://api.appstoreconnect.apple.com/v1/bundleIds",
+              headers=headers,
+              params={"filter[identifier]": identifier},
+              timeout=30,
+          )
+          existing.raise_for_status()
+          if any(
+              item["attributes"]["identifier"] == identifier
+              for item in existing.json().get("data", [])
+          ):
+              print(f"'{identifier}' existe déjà sur le portail — rien à faire.")
+              raise SystemExit(0)
+
+          response = requests.post(
+              "https://api.appstoreconnect.apple.com/v1/bundleIds",
+              headers=headers,
+              json={
+                  "data": {
+                      "type": "bundleIds",
+                      "attributes": {
+                          "identifier": identifier,
+                          "name": os.environ["BUNDLE_NAME"],
+                          "platform": "IOS",
+                      },
+                  }
+              },
+              timeout=30,
+          )
+          if response.status_code == 201:
+              print(f"'{identifier}' enregistré ✓ — relance un build, la signature trouvera l'identifiant.")
+          else:
+              print(f"::error::API App Store Connect: {response.status_code} {response.text}")
+              raise SystemExit(1)
+          PY

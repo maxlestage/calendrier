@@ -96,12 +96,26 @@ l'app TestFlight (testeur interne = pas de review Apple).
 ### Xcode Cloud (alternative sans GitHub Actions)
 
 Si tu utilises plutôt **Xcode Cloud** (configurable depuis App Store Connect),
-c'est encore plus simple : Xcode Cloud gère la signature et enregistre les
-App IDs tout seul. Il suffit que **la fiche app existe dans App Store Connect**
-(étape 4 ci-dessus) et que Xcode Cloud soit autorisé sur ton compte. Comme le
-projet n'a **aucune capacité spéciale**, il n'y a pas d'App Group ni de profil
-à créer à la main — c'est ce qui provoquait l'erreur « No profiles for
-'com.maxlestage.calendrier' were found ».
+la fiche app dans App Store Connect suffit pour l'app principale : créer la
+fiche enregistre son bundle ID (`com.maxlestage.calendrier`).
+
+> ⚠️ **Extension widget : une étape manuelle unique.** La signature
+> éphémère de Xcode Cloud sait créer des *profils* pour un bundle ID
+> existant, mais **ne peut pas créer le bundle ID d'une extension**. Sans
+> lui, l'export échoue avec « Automatic signing cannot register bundle
+> identifier "com.maxlestage.calendrier.CalendrierWidget" ». Deux façons de
+> l'enregistrer (une seule fois) :
+>
+> 1. **Portail Apple (2 min, marche au téléphone)** :
+>    [developer.apple.com/account/resources/identifiers](https://developer.apple.com/account/resources/identifiers/list)
+>    → « + » → App IDs → type *App* → identifiant **explicite**
+>    `com.maxlestage.calendrier.CalendrierWidget`, description
+>    « Calendrier Widget », **aucune capacité** à cocher → Register.
+> 2. **Workflow GitHub** « iOS — Enregistrer un bundle ID » (Actions →
+>    Run workflow) — nécessite les secrets `APPSTORE_*` ci-dessus.
+>
+> Ensuite, relancer un build Xcode Cloud : la signature trouve l'identifiant
+> et crée les profils toute seule.
 
 ## Structure
 
