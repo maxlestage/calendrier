@@ -7,6 +7,7 @@ mod handlers;
 mod migration;
 mod seed;
 mod state;
+mod tides;
 mod tmdb;
 
 use actix_cors::Cors;
