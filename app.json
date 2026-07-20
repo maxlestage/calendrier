@@ -28,6 +28,10 @@
     "TMDB_API_KEY": {
       "description": "Clé API TMDB (gratuite sur themoviedb.org) : récupère automatiquement les sorties cinéma France à venir au démarrage",
       "required": false
+    },
+    "WORLDTIDES_API_KEY": {
+      "description": "Clé API WorldTides (worldtides.info) : ajoute les marées (pleines/basses mers, heures et hauteurs) pour Brest, Saint-Malo, La Rochelle et Nice. Sans clé, pas de marées.",
+      "required": false
     }
   }
 }
