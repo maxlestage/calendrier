@@ -1,7 +1,10 @@
 import SwiftUI
 import WidgetKit
 
-private let appGroup = "group.com.maxlestage.calendrier"
+// The widget has no App Group (kept out to keep automatic code-signing free
+// of capabilities that need manual portal registration), so it reads the
+// server URL that the app last mirrored into standard defaults, falling back
+// to the deployed backend.
 private let defaultServer = "https://calendrier-89594ce603e6.herokuapp.com"
 
 // The widget target is self-contained on purpose: a minimal copy of the
@@ -67,7 +70,7 @@ struct NextEventsProvider: TimelineProvider {
     }
 
     private func load() async -> NextEventsEntry {
-        let base = UserDefaults(suiteName: appGroup)?.string(forKey: "serverURL") ?? defaultServer
+        let base = UserDefaults.standard.string(forKey: "serverURL") ?? defaultServer
         let trimmed = base.hasSuffix("/") ? String(base.dropLast()) : base
         let formatter = ISO8601DateFormatter()
         let now = Date()

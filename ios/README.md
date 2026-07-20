@@ -36,13 +36,16 @@ faudrait ajouter une exception ATS dans les réglages du projet.
 ## Widget d'écran d'accueil
 
 La cible **CalendrierWidget** fournit un widget (petit et moyen) « Prochains
-événements » : appui long sur l'écran d'accueil → « + » → Calendrier. Le
-widget lit l'URL du serveur via l'App Group `group.com.maxlestage.calendrier`
-(partagé avec l'app) et se rafraîchit environ toutes les 30 minutes.
+événements » : appui long sur l'écran d'accueil → « + » → Calendrier. Il se
+rafraîchit environ toutes les 30 minutes.
 
-Si la signature refuse l'App Group (selon le type de compte), supprime la
-capacité « App Groups » des deux cibles : le widget utilisera alors l'URL
-par défaut codée dans `CalendrierWidget.swift` (à adapter).
+> **Pas d'App Group.** Le projet n'utilise **aucune capacité spéciale** :
+> c'est volontaire, car une capacité comme App Groups doit être enregistrée
+> à la main sur le portail Apple et casse la signature automatique (Xcode
+> Cloud comme signature auto échouent alors avec « No profiles were found »).
+> Le widget lit donc l'URL du serveur dans les réglages standards que l'app y
+> recopie ; si le widget tourne sans que l'app ait été ouverte, il utilise
+> l'URL par défaut codée dans `CalendrierWidget.swift` (le backend déployé).
 
 ## Notifications
 
@@ -74,13 +77,13 @@ un téléphone. Prérequis : un compte **Apple Developer Program payant**
    secret `DIST_CERT_BASE64`, et le mot de passe dans `DIST_CERT_PASSWORD`
    (limite Apple : 2-3 certificats de distribution — réutilise-le, ne le
    régénère pas à chaque fois)
-4. **Déclarer l'app** : [developer.apple.com](https://developer.apple.com/account)
-   → Identifiers → « + » :
-   - App ID `com.maxlestage.calendrier` (capacité App Groups)
-   - App ID `com.maxlestage.calendrier.CalendrierWidget` (App Groups)
-   - App Group `group.com.maxlestage.calendrier`
-   Puis App Store Connect → Apps → « + » → nouvelle app iOS avec le bundle
-   ID `com.maxlestage.calendrier`
+4. **Déclarer l'app dans App Store Connect** :
+   [appstoreconnect.apple.com](https://appstoreconnect.apple.com) → Apps →
+   « + » → nouvelle app iOS avec le bundle ID `com.maxlestage.calendrier`.
+   Les App IDs `com.maxlestage.calendrier` et
+   `com.maxlestage.calendrier.CalendrierWidget` s'enregistrent
+   **automatiquement** à la première signature (aucune capacité spéciale à
+   activer — l'App Group a été retiré exprès).
 
 ### Utilisation
 
@@ -89,6 +92,16 @@ archive, signe et téléverse un build : workflow **TestFlight**. Le numéro de
 build = numéro du run. Après 5-30 min de traitement Apple, le build apparaît
 dans App Store Connect → TestFlight, et l'app s'installe sur l'iPhone via
 l'app TestFlight (testeur interne = pas de review Apple).
+
+### Xcode Cloud (alternative sans GitHub Actions)
+
+Si tu utilises plutôt **Xcode Cloud** (configurable depuis App Store Connect),
+c'est encore plus simple : Xcode Cloud gère la signature et enregistre les
+App IDs tout seul. Il suffit que **la fiche app existe dans App Store Connect**
+(étape 4 ci-dessus) et que Xcode Cloud soit autorisé sur ton compte. Comme le
+projet n'a **aucune capacité spéciale**, il n'y a pas d'App Group ni de profil
+à créer à la main — c'est ce qui provoquait l'erreur « No profiles for
+'com.maxlestage.calendrier' were found ».
 
 ## Structure
 
@@ -106,9 +119,8 @@ Calendrier/
     EventFormView.swift      # Formulaire création/édition (Form + sheet)
     SettingsView.swift       # URL du serveur + rappels
   Notifications.swift        # Programmation des rappels locaux
-  Calendrier.entitlements    # App Group (partage de l'URL avec le widget)
+  Assets.xcassets/           # Icône d'app 1024 (RGB, sans alpha) + couleur d'accent
 CalendrierWidget/
   CalendrierWidget.swift     # Widget « Prochains événements » (small/medium)
   Info.plist                 # Point d'extension WidgetKit
-  CalendrierWidget.entitlements
 ```
