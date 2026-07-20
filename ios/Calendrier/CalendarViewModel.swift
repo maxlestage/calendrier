@@ -2,8 +2,6 @@ import Foundation
 import SwiftUI
 import WidgetKit
 
-let appGroupID = "group.com.maxlestage.calendrier"
-
 @MainActor
 final class CalendarViewModel: ObservableObject {
     /// First day of the displayed month
@@ -96,8 +94,9 @@ final class CalendarViewModel: ObservableObject {
                 to: formatter.string(from: afterLast)
             )
             errorMessage = nil
-            // Share the server URL with the widget and refresh it
-            UserDefaults(suiteName: appGroupID)?.set(serverURL, forKey: "serverURL")
+            // Mirror the server URL into standard defaults (the widget reads
+            // it there) and refresh the widget timeline.
+            UserDefaults.standard.set(serverURL, forKey: "serverURL")
             WidgetCenter.shared.reloadAllTimelines()
             if UserDefaults.standard.bool(forKey: "notificationsEnabled") {
                 await NotificationScheduler.reschedule(events: events)
