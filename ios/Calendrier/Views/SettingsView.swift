@@ -8,15 +8,17 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Serveur") {
+                Section {
                     TextField("https://mon-app.herokuapp.com", text: viewModel.$serverURL)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                } header: {
+                    Text("Serveur")
                 } footer: {
                     Text("URL du backend Calendrier (Actix Web). L'app parle à /api/events.")
                 }
-                Section("Rappels") {
+                Section {
                     Toggle("Notifications avant les événements", isOn: $notificationsEnabled)
                         .onChange(of: notificationsEnabled) { _, enabled in
                             Task {
@@ -32,6 +34,8 @@ struct SettingsView: View {
                                 }
                             }
                         }
+                } header: {
+                    Text("Rappels")
                 } footer: {
                     Text("1 h avant un événement horodaté, à 9 h le jour même pour un événement « journée entière ».")
                 }
