@@ -248,6 +248,66 @@ pub async fn export_events(snap: web::Data<Snapshot>) -> impl Responder {
     HttpResponse::Ok().json(snap.events())
 }
 
+// ---------------------------------------------------------------------------
+// Device backup: the web app (iOS webview/PWA) keeps a copy of this state in
+// the phone's persistent storage and pushes it back if a fresh dyno booted
+// without any server-side backup.
+
+#[derive(serde::Serialize, Deserialize)]
+pub struct StatePayload {
+    #[serde(default)]
+    pub events: Vec<event::Model>,
+    #[serde(default)]
+    pub settings: Vec<crate::entities::setting::Model>,
+}
+
+/// Snapshot + settings, the unit the device stores locally.
+#[get("/state")]
+pub async fn get_state(
+    db: web::Data<DatabaseConnection>,
+    snap: web::Data<Snapshot>,
+) -> impl Responder {
+    let settings = crate::entities::setting::Entity::find()
+        .all(db.get_ref())
+        .await
+        .unwrap_or_default();
+    HttpResponse::Ok().json(StatePayload {
+        events: snap.events(),
+        settings,
+    })
+}
+
+/// Restore a device backup: settings first (upsert), then events
+/// (deduplicated — safe to import over freshly seeded data).
+#[post("/import")]
+pub async fn import_state(
+    db: web::Data<DatabaseConnection>,
+    snap: web::Data<Snapshot>,
+    payload: web::Json<StatePayload>,
+) -> impl Responder {
+    let payload = payload.into_inner();
+    let mut settings_set = 0usize;
+    for s in &payload.settings {
+        if s.key.trim().is_empty() {
+            continue;
+        }
+        match crate::settings::set(db.get_ref(), &s.key, &s.value).await {
+            Ok(()) => settings_set += 1,
+            Err(e) => log::warn!("import: could not set {}: {e}", s.key),
+        }
+    }
+    let inserted = crate::seed::import_events(db.get_ref(), payload.events).await;
+    // The restored selection may call for tides/vacations that a blank dyno
+    // never fetched
+    crate::holidays::sync_vacations(db.get_ref()).await;
+    snap.refresh(db.get_ref()).await;
+    log::info!("device restore: {inserted} events, {settings_set} settings");
+    HttpResponse::Ok().json(serde_json::json!({
+        "events_inserted": inserted,
+        "settings_set": settings_set,
+    }))
+}
+
 /// Weather for the selected beaches AND cities (Open-Meteo, cached ~30 min).
 #[get("/beach-weather")]
 pub async fn get_beach_weather(
