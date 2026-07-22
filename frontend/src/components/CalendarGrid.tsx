@@ -1,5 +1,6 @@
 import type { CalendarEvent } from "../types";
-import { DAY_NAMES, eventCoversDay, isSameDay, monthGridDays } from "../dates";
+import { TIDE_COLOR } from "../types";
+import { DAY_NAMES, eventCoversDay, isSameDay, monthGridDays, toTimeKey } from "../dates";
 
 interface Props {
   year: number;
@@ -28,7 +29,18 @@ export default function CalendarGrid({ year, month, events, selectedDay, onSelec
           const isToday = isSameDay(day, today);
           const isSelected = isSameDay(day, selectedDay);
           const dayEvents = events.filter((ev) => eventCoversDay(ev.start, ev.end, day));
-          const dots = dayEvents.slice(0, 4);
+          // Tides get first-class visibility: high-tide times printed in the
+          // cell (sea blue); the other categories keep their color dots.
+          const tideHighs = [
+            ...new Set(
+              dayEvents
+                .filter((ev) => ev.color === TIDE_COLOR && ev.title.includes("Pleine mer"))
+                .map((ev) => toTimeKey(new Date(ev.start)))
+            ),
+          ]
+            .sort()
+            .slice(0, 2);
+          const dots = dayEvents.filter((ev) => ev.color !== TIDE_COLOR).slice(0, 4);
           return (
             <button
               key={day.toISOString()}
@@ -41,6 +53,13 @@ export default function CalendarGrid({ year, month, events, selectedDay, onSelec
                   <span key={ev.id} className="dot" style={{ background: ev.color ?? "#4f6bed" }} />
                 ))}
               </span>
+              {tideHighs.length > 0 && (
+                <span className="cell-tides">
+                  {tideHighs.map((t) => (
+                    <span key={t}>▲{t}</span>
+                  ))}
+                </span>
+              )}
             </button>
           );
         })}
