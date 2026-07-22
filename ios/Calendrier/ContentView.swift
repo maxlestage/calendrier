@@ -1,118 +1,52 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var viewModel = CalendarViewModel()
-
-    private enum Sheet: Identifiable {
-        case create
-        case edit(CalendarEvent)
-        case settings
-
-        var id: String {
-            switch self {
-            case .create: return "create"
-            case .edit(let event): return "edit-\(event.id)"
-            case .settings: return "settings"
-            }
-        }
-    }
-
-    @State private var sheet: Sheet?
+    @AppStorage("serverURL") private var serverURL = "https://calendrier-89594ce603e6.herokuapp.com"
+    @State private var loadFailed = false
+    @State private var draft = ""
 
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottomTrailing) {
-                ScrollView {
-                    VStack(spacing: 12) {
-                        if let error = viewModel.errorMessage {
-                            Text("⚠ \(error)")
-                                .font(.footnote)
-                                .foregroundStyle(.red)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(10)
-                                .background(Color.red.opacity(0.1))
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                        }
-                        MonthGridView(viewModel: viewModel)
-                        DayAgendaView(
-                            viewModel: viewModel,
-                            onEventTap: { sheet = .edit($0) },
-                            onAdd: { sheet = .create }
-                        )
-                        Spacer(minLength: 80)
-                    }
-                    .padding(.horizontal, 12)
+        Group {
+            if !loadFailed, let url = URL(string: serverURL), url.scheme?.hasPrefix("http") == true {
+                WebView(url: url) {
+                    loadFailed = true
                 }
-                Button {
-                    sheet = .create
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 56, height: 56)
-                        .background(Color.accentColor)
-                        .clipShape(Circle())
-                        .shadow(color: Color.accentColor.opacity(0.4), radius: 8, y: 4)
-                }
-                .padding(20)
-                .accessibilityLabel("Nouvel événement")
+                .ignoresSafeArea()
+            } else {
+                fallback
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle(viewModel.monthTitle)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        viewModel.shiftMonth(-1)
-                    } label: {
-                        Image(systemName: "chevron.left")
-                    }
-                    .accessibilityLabel("Mois précédent")
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 4) {
-                        Button {
-                            viewModel.goToday()
-                        } label: {
-                            Image(systemName: "calendar.circle")
-                        }
-                        .accessibilityLabel("Aujourd'hui")
-                        Button {
-                            viewModel.shiftMonth(1)
-                        } label: {
-                            Image(systemName: "chevron.right")
-                        }
-                        .accessibilityLabel("Mois suivant")
-                        Button {
-                            sheet = .settings
-                        } label: {
-                            Image(systemName: "gearshape")
-                        }
-                        .accessibilityLabel("Réglages")
-                    }
-                }
-            }
-            .sheet(item: $sheet) { sheet in
-                switch sheet {
-                case .create:
-                    EventFormView(
-                        viewModel: viewModel,
-                        existing: nil,
-                        initialDay: viewModel.selectedDay
-                    )
-                case .edit(let event):
-                    EventFormView(
-                        viewModel: viewModel,
-                        existing: event,
-                        initialDay: event.startDate
-                    )
-                case .settings:
-                    SettingsView(viewModel: viewModel)
-                }
-            }
-            .task { await viewModel.reload() }
-            .refreshable { await viewModel.reload() }
         }
+        .onAppear { draft = serverURL }
+    }
+
+    /// Shown when the page cannot load (server down, wrong URL): lets the
+    /// user fix the server address without rebuilding the app.
+    private var fallback: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "wifi.exclamationmark")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+            Text("Impossible de charger le calendrier")
+                .font(.headline)
+            Text("Vérifie ta connexion ou l'adresse du serveur.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            TextField("https://mon-app.herokuapp.com", text: $draft)
+                .keyboardType(.URL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .textFieldStyle(.roundedBorder)
+                .padding(.horizontal, 24)
+            Button("Réessayer") {
+                let trimmed = draft.trimmingCharacters(in: .whitespaces)
+                if !trimmed.isEmpty {
+                    serverURL = trimmed
+                }
+                loadFailed = false
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
     }
 }
 
