@@ -15,10 +15,12 @@ backend (buildpack Rust), et démarre un seul dyno : le binaire Rust sert l'API
 démarrage — rien d'autre à faire.
 
 > ⚠️ La base est **SQLite sur le disque du dyno**, qui est éphémère chez
-> Heroku. Pour compenser, le backend garde en mémoire un snapshot des
-> **3 derniers mois** d'événements et le sauvegarde dans la config var
-> `CALENDAR_BACKUP` quand le dyno s'arrête (SIGTERM) ; au démarrage d'un
-> nouveau dyno, une base vide est re-remplie depuis cette sauvegarde.
+> Heroku. Pour compenser, le backend sauvegarde dans la config var
+> `CALENDAR_BACKUP` quand le dyno s'arrête (SIGTERM) : les événements des
+> **3 derniers mois** (les récurrents quel que soit leur âge) **et les
+> réglages** (plages, villes sélectionnées) ; au démarrage d'un nouveau
+> dyno, une base vide est re-remplie depuis cette sauvegarde — les
+> réglages d'abord, pour que marées et vacances se re-remplissent seuls.
 
 ### Activer la sauvegarde/restauration entre dynos
 

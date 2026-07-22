@@ -116,8 +116,8 @@ async fn main() -> std::io::Result<()> {
     // actix stops gracefully and we get a chance to persist the snapshot.
     server.await?;
 
-    log::info!("shutting down, backing up events");
+    log::info!("shutting down, backing up events and settings");
     snapshot.refresh(db_data.get_ref()).await;
-    backup::push_to_heroku(&snapshot.events()).await;
+    backup::push_to_heroku(db_data.get_ref(), &snapshot.events()).await;
     Ok(())
 }
