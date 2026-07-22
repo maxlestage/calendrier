@@ -1,4 +1,4 @@
-import type { CalendarEvent, EventPayload } from "./types";
+import type { CalendarEvent, EventPayload, TideSpot } from "./types";
 
 const BASE = "/api";
 
@@ -40,4 +40,16 @@ export function updateEvent(id: number, payload: EventPayload): Promise<Calendar
 
 export function deleteEvent(id: number): Promise<void> {
   return fetch(`${BASE}/events/${id}`, { method: "DELETE" }).then((res) => handle<void>(res));
+}
+
+export function fetchTideSpots(): Promise<TideSpot[]> {
+  return fetch(`${BASE}/tide-spots`).then((res) => handle<TideSpot[]>(res));
+}
+
+export function saveTideSpots(spots: string[]): Promise<TideSpot[]> {
+  return fetch(`${BASE}/tide-spots`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ spots }),
+  }).then((res) => handle<TideSpot[]>(res));
 }

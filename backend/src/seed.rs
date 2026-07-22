@@ -135,13 +135,15 @@ pub async fn seed(db: &DatabaseConnection) {
         }
     }
 
-    // Fetch tides only for ports whose stored horizon runs out within the
-    // next half-window (keeps API usage low: roughly one refresh per horizon).
+    // Fetch tides only for the user-selected spots whose stored horizon runs
+    // out within the next half-window (keeps API usage low: roughly one
+    // refresh per horizon).
     let now = chrono::Utc::now();
     let refresh_before = (now + chrono::Duration::days(tides::horizon_days() / 2 + 1))
         .format("%Y-%m-%dT%H:%M:%SZ")
         .to_string();
-    let ports_needing: Vec<&tides::Port> = tides::enabled_ports()
+    let ports_needing: Vec<&tides::Port> = tides::selected_ports(db)
+        .await
         .into_iter()
         .filter(|p| {
             tide_horizon
@@ -155,6 +157,21 @@ pub async fn seed(db: &DatabaseConnection) {
         candidates.extend(tide_events);
     }
 
+    let inserted = insert_candidates(db, candidates, &mut seen_titles, &mut f1_dates).await;
+    if inserted > 0 {
+        log::info!("seeded {inserted} themed events");
+    }
+}
+
+/// Insert candidates against a pre-built dedup index. Used by the startup
+/// seed and by the tide-spot selection endpoint (which fetches tides for
+/// freshly selected spots on the spot).
+async fn insert_candidates(
+    db: &DatabaseConnection,
+    candidates: Vec<SeedCandidate>,
+    seen_titles: &mut HashSet<(String, String)>,
+    f1_dates: &mut HashSet<String>,
+) -> usize {
     let cutoff = three_months_ago();
     let mut inserted = 0usize;
     for c in candidates {
@@ -197,7 +214,28 @@ pub async fn seed(db: &DatabaseConnection) {
             Err(e) => log::warn!("failed to insert a seed event: {e}"),
         }
     }
-    if inserted > 0 {
-        log::info!("seeded {inserted} themed events");
+    inserted
+}
+
+/// Insert freshly fetched events with a dedup index rebuilt from the
+/// database (standalone entry point for request handlers).
+pub async fn insert_new_events(db: &DatabaseConnection, candidates: Vec<SeedCandidate>) -> usize {
+    let existing = match Event::find().all(db).await {
+        Ok(events) => events,
+        Err(e) => {
+            log::warn!("could not list events, skipping insert: {e}");
+            return 0;
+        }
+    };
+    let mut seen_titles: HashSet<(String, String)> = HashSet::new();
+    let mut f1_dates: HashSet<String> = HashSet::new();
+    for ev in &existing {
+        if ev.start.len() >= 10 {
+            seen_titles.insert((normalize(&ev.title), dedup_slot(&ev.start, ev.all_day)));
+            if ev.color.as_deref() == Some(f1::F1_COLOR) {
+                f1_dates.insert(paris_day(&ev.start));
+            }
+        }
     }
+    insert_candidates(db, candidates, &mut seen_titles, &mut f1_dates).await
 }
