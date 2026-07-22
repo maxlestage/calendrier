@@ -199,6 +199,73 @@ button {
   color: var(--muted);
 }
 
+/* Beach weather cards (top of the day agenda) */
+.beach-weather {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.beach-weather-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #e7f4fd, #f2fbff);
+  border: 1px solid #cfe7f7;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.beach-weather-emoji {
+  font-size: 1.7rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.beach-weather-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.beach-weather-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.beach-weather-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #0b4f8a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.beach-weather-temp {
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.beach-weather-tmin {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.beach-weather-details {
+  font-size: 0.78rem;
+  color: #33566f;
+}
+
 .agenda-list {
   list-style: none;
   margin: 0;

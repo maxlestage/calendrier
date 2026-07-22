@@ -10,6 +10,7 @@ mod settings;
 mod state;
 mod tides;
 mod tmdb;
+mod weather;
 
 use actix_cors::Cors;
 use actix_files::{Files, NamedFile};
@@ -40,6 +41,7 @@ async fn main() -> std::io::Result<()> {
     seed::seed(&db).await;
     let snapshot = web::Data::new(state::Snapshot::new());
     snapshot.refresh(&db).await;
+    let weather_cache = web::Data::new(weather::WeatherCache::new());
 
     let host = std::env::var("HOST").unwrap_or_else(|_| "0.0.0.0".into());
     let port: u16 = std::env::var("PORT")
@@ -64,10 +66,12 @@ async fn main() -> std::io::Result<()> {
     let server = {
         let db_data = db_data.clone();
         let snapshot = snapshot.clone();
+        let weather_cache = weather_cache.clone();
         HttpServer::new(move || {
         let mut app = App::new()
             .app_data(db_data.clone())
             .app_data(snapshot.clone())
+            .app_data(weather_cache.clone())
             .wrap(Cors::permissive())
             .service(
                 web::scope("/api")
@@ -78,7 +82,8 @@ async fn main() -> std::io::Result<()> {
                     .service(handlers::delete_event)
                     .service(handlers::export_events)
                     .service(handlers::get_tide_spots)
-                    .service(handlers::put_tide_spots),
+                    .service(handlers::put_tide_spots)
+                    .service(handlers::get_beach_weather),
             );
         if serve_static {
             let index = std::path::Path::new(&static_dir).join("index.html");
