@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { fetchTideSpots, saveTideSpots } from "../api";
-import type { TideSpot } from "../types";
+import { fetchTideSpots, fetchWeatherCities, saveTideSpots, saveWeatherCities } from "../api";
+import type { TideSpot, WeatherCity } from "../types";
 
 interface Props {
   onSaved: () => void;
@@ -20,7 +20,9 @@ const GROUPS: { id: TideSpot["group"]; label: string; hint?: string }[] = [
 
 export default function TideSpotsModal({ onSaved, onClose }: Props) {
   const [spots, setSpots] = useState<TideSpot[] | null>(null);
+  const [cities, setCities] = useState<WeatherCity[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedCities, setSelectedCities] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -29,6 +31,12 @@ export default function TideSpotsModal({ onSaved, onClose }: Props) {
       .then((list) => {
         setSpots(list);
         setSelected(new Set(list.filter((s) => s.selected).map((s) => s.key)));
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));
+    fetchWeatherCities()
+      .then((list) => {
+        setCities(list);
+        setSelectedCities(new Set(list.filter((c) => c.selected).map((c) => c.key)));
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));
   }, []);
@@ -46,11 +54,24 @@ export default function TideSpotsModal({ onSaved, onClose }: Props) {
     });
   };
 
+  const addCity = (key: string) => {
+    if (!key) return;
+    setSelectedCities((prev) => new Set(prev).add(key));
+  };
+
+  const removeCity = (key: string) => {
+    setSelectedCities((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  };
+
   const save = async () => {
     setBusy(true);
     setError(null);
     try {
-      await saveTideSpots([...selected]);
+      await Promise.all([saveTideSpots([...selected]), saveWeatherCities([...selectedCities])]);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -58,16 +79,56 @@ export default function TideSpotsModal({ onSaved, onClose }: Props) {
     }
   };
 
+  const chosenCities = (cities ?? []).filter((c) => selectedCities.has(c.key));
+  const availableCities = (cities ?? []).filter((c) => !selectedCities.has(c.key));
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Marées — choisir les plages</h2>
+          <h2>Plages & villes</h2>
           <button className="icon-btn" onClick={onClose} aria-label="Fermer">
             ✕
           </button>
         </div>
-        {!spots && !error && <p className="muted">Chargement…</p>}
+        {!spots && !cities && !error && <p className="muted">Chargement…</p>}
+        {cities && (
+          <section className="tide-group">
+            <h3>🏙️ Villes de France — météo</h3>
+            <p className="muted small">Météo 7 jours dans l'agenda (pas de marées en ville 😉).</p>
+            {chosenCities.length > 0 && (
+              <div className="chips">
+                {chosenCities.map((c) => (
+                  <span key={c.key} className="chip">
+                    {c.name}
+                    <button
+                      className="chip-x"
+                      onClick={() => removeCity(c.key)}
+                      aria-label={`Retirer ${c.name}`}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {availableCities.length > 0 && (
+              <select
+                className="tide-select"
+                value=""
+                onChange={(e) => addCity(e.target.value)}
+                disabled={busy}
+              >
+                <option value="">Ajouter une ville…</option>
+                {availableCities.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </section>
+        )}
         {spots &&
           GROUPS.map((group) => {
             const groupSpots = spots.filter((s) => s.group === group.id);
@@ -115,13 +176,14 @@ export default function TideSpotsModal({ onSaved, onClose }: Props) {
         {error && <p className="error">{error}</p>}
         <div className="modal-actions">
           <span className="muted small">
-            {selected.size} plage{selected.size > 1 ? "s" : ""} · 4 marées/jour/plage
+            {selected.size} plage{selected.size > 1 ? "s" : ""} · {selectedCities.size} ville
+            {selectedCities.size > 1 ? "s" : ""}
           </span>
           <span className="spacer" />
           <button className="btn" onClick={onClose} disabled={busy}>
             Annuler
           </button>
-          <button className="btn primary" onClick={save} disabled={busy || !spots}>
+          <button className="btn primary" onClick={save} disabled={busy || !spots || !cities}>
             {busy ? "Enregistrement…" : "Enregistrer"}
           </button>
         </div>

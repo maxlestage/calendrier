@@ -110,7 +110,7 @@ export default function App() {
           <button
             className="nav-btn"
             onClick={() => setTideModal(true)}
-            aria-label="Choisir les plages pour les marées"
+            aria-label="Choisir plages (marées) et villes (météo)"
           >
             🌊
           </button>
