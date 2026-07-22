@@ -70,6 +70,7 @@ pub async fn fetch() -> Vec<SeedCandidate> {
         .filter(|m| m.release_date.len() == 10)
         .take(10)
         .map(|m| SeedCandidate {
+            all_day: None,
             date: m.release_date,
             title: format!("🎬 {}", m.title),
             description: Some("Sortie cinéma France".into()),

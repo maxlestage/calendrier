@@ -2,6 +2,7 @@ use sea_orm_migration::prelude::*;
 
 mod m20240101_000001_create_event_table;
 mod m20260722_000001_create_setting_table;
+mod m20260722_000002_add_recurrence;
 
 pub struct Migrator;
 
@@ -11,6 +12,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20240101_000001_create_event_table::Migration),
             Box::new(m20260722_000001_create_setting_table::Migration),
+            Box::new(m20260722_000002_add_recurrence::Migration),
         ]
     }
 }

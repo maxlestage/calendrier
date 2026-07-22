@@ -1,3 +1,5 @@
+export type Recurrence = "weekly" | "monthly" | "yearly" | null;
+
 export interface CalendarEvent {
   id: number;
   title: string;
@@ -8,6 +10,7 @@ export interface CalendarEvent {
   end: string;
   all_day: boolean;
   color: string | null;
+  recurrence: Recurrence;
 }
 
 export interface EventPayload {
@@ -17,6 +20,7 @@ export interface EventPayload {
   end: string;
   all_day: boolean;
   color: string | null;
+  recurrence: Recurrence;
 }
 
 export interface TideSpot {
@@ -46,6 +50,11 @@ export interface BeachWeatherDay {
   wave: number | null;
   /** °C, sea surface around midday */
   water: number | null;
+  /** "HH:MM" (Paris) */
+  sunrise: string | null;
+  sunset: string | null;
+  /** Worst pollen of the day, grains/m³ (≈4-day horizon) */
+  pollen: number | null;
 }
 
 export interface BeachWeather {
