@@ -82,6 +82,8 @@ async fn main() -> std::io::Result<()> {
                     .service(handlers::update_event)
                     .service(handlers::delete_event)
                     .service(handlers::export_events)
+                    .service(handlers::get_state)
+                    .service(handlers::import_state)
                     .service(handlers::get_tide_spots)
                     .service(handlers::put_tide_spots)
                     .service(handlers::get_beach_weather)
