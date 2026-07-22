@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import CalendarGrid from "./components/CalendarGrid";
 import DayAgenda from "./components/DayAgenda";
 import EventModal from "./components/EventModal";
+import TideSpotsModal from "./components/TideSpotsModal";
 import { createEvent, deleteEvent, fetchEvents, updateEvent } from "./api";
 import { eventCoversDay, MONTH_NAMES, monthGridDays } from "./dates";
 import type { CalendarEvent, EventPayload } from "./types";
@@ -18,6 +19,7 @@ export default function App() {
   const [selectedDay, setSelectedDay] = useState<Date>(now);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [tideModal, setTideModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Bounds of the visible grid (6 weeks), not just the month
@@ -91,9 +93,18 @@ export default function App() {
         <button className="month-label" onClick={goToday} title="Revenir à aujourd'hui">
           {MONTH_NAMES[month]} {year}
         </button>
-        <button className="nav-btn" onClick={() => shiftMonth(1)} aria-label="Mois suivant">
-          ›
-        </button>
+        <div className="nav-group">
+          <button className="nav-btn" onClick={() => shiftMonth(1)} aria-label="Mois suivant">
+            ›
+          </button>
+          <button
+            className="nav-btn"
+            onClick={() => setTideModal(true)}
+            aria-label="Choisir les plages pour les marées"
+          >
+            🌊
+          </button>
+        </div>
       </header>
       {error && <p className="error banner">⚠ {error}</p>}
       <CalendarGrid
@@ -123,6 +134,15 @@ export default function App() {
           onSave={save}
           onDelete={remove}
           onClose={() => setModal(null)}
+        />
+      )}
+      {tideModal && (
+        <TideSpotsModal
+          onSaved={() => {
+            setTideModal(false);
+            reload();
+          }}
+          onClose={() => setTideModal(false)}
         />
       )}
     </div>

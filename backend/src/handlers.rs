@@ -136,3 +136,106 @@ pub async fn delete_event(
 pub async fn export_events(snap: web::Data<Snapshot>) -> impl Responder {
     HttpResponse::Ok().json(snap.events())
 }
+
+// ---------------------------------------------------------------------------
+// Tide spots: catalog + user selection (the in-app dropdown)
+
+#[derive(serde::Serialize)]
+pub struct TideSpot {
+    key: &'static str,
+    name: &'static str,
+    group: &'static str,
+    selected: bool,
+}
+
+#[derive(Deserialize)]
+pub struct TideSpotsPayload {
+    pub spots: Vec<String>,
+}
+
+async fn tide_spots_response(db: &DatabaseConnection) -> Vec<TideSpot> {
+    let selected: std::collections::HashSet<&str> = crate::tides::selected_ports(db)
+        .await
+        .into_iter()
+        .map(|p| p.key)
+        .collect();
+    crate::tides::PORTS
+        .iter()
+        .map(|p| TideSpot {
+            key: p.key,
+            name: p.name,
+            group: p.group,
+            selected: selected.contains(p.key),
+        })
+        .collect()
+}
+
+#[get("/tide-spots")]
+pub async fn get_tide_spots(db: web::Data<DatabaseConnection>) -> impl Responder {
+    HttpResponse::Ok().json(tide_spots_response(db.get_ref()).await)
+}
+
+#[put("/tide-spots")]
+pub async fn put_tide_spots(
+    db: web::Data<DatabaseConnection>,
+    snap: web::Data<Snapshot>,
+    payload: web::Json<TideSpotsPayload>,
+) -> impl Responder {
+    let tokens: Vec<String> = payload
+        .into_inner()
+        .spots
+        .iter()
+        .map(|s| s.trim().to_lowercase())
+        .filter(|s| !s.is_empty())
+        .collect();
+    // Every token must be a known spot key or group name
+    for t in &tokens {
+        let known = crate::tides::PORTS.iter().any(|p| p.key == *t || p.group == *t);
+        if !known {
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({ "error": format!("spot inconnu : {t}") }));
+        }
+    }
+
+    let old: std::collections::HashSet<&str> = crate::tides::selected_ports(db.get_ref())
+        .await
+        .into_iter()
+        .map(|p| p.key)
+        .collect();
+    let new_ports = crate::tides::ports_for_tokens(&tokens);
+    let new_keys: std::collections::HashSet<&str> = new_ports.iter().map(|p| p.key).collect();
+
+    if let Err(e) = crate::settings::set(db.get_ref(), crate::tides::SPOTS_SETTING, &tokens.join(",")).await {
+        return HttpResponse::InternalServerError()
+            .json(serde_json::json!({ "error": e.to_string() }));
+    }
+
+    // Drop tide events of deselected spots
+    for port in crate::tides::PORTS.iter() {
+        if old.contains(port.key) && !new_keys.contains(port.key) {
+            let res = Event::delete_many()
+                .filter(event::Column::Color.eq(crate::tides::TIDE_COLOR))
+                .filter(event::Column::Title.starts_with(format!("🌊 {} — ", port.name)))
+                .exec(db.get_ref())
+                .await;
+            if let Err(e) = res {
+                log::warn!("could not delete tides for {}: {e}", port.name);
+            }
+        }
+    }
+
+    // Fetch tides right away for newly selected spots
+    let added: Vec<&crate::tides::Port> = new_ports
+        .into_iter()
+        .filter(|p| !old.contains(p.key))
+        .collect();
+    if !added.is_empty() {
+        let now = chrono::Utc::now().timestamp();
+        let candidates = crate::tides::fetch(&added, now).await;
+        let inserted = crate::seed::insert_new_events(db.get_ref(), candidates).await;
+        log::info!("tide selection change: {inserted} events inserted for {} new spots", added.len());
+    }
+
+    snap.refresh(db.get_ref()).await;
+    HttpResponse::Ok().json(tide_spots_response(db.get_ref()).await)
+}
