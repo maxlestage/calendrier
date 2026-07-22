@@ -31,21 +31,6 @@ export function searchEvents(q: string): Promise<CalendarEvent[]> {
   return fetch(`${BASE}/events?${params}`).then((res) => handle<CalendarEvent[]>(res));
 }
 
-export function fetchSchoolZone(): Promise<string> {
-  return fetch(`${BASE}/school-zone`)
-    .then((res) => handle<{ zone: string }>(res))
-    .then((b) => b.zone);
-}
-
-export function saveSchoolZone(zone: string): Promise<string> {
-  return fetch(`${BASE}/school-zone`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ zone }),
-  })
-    .then((res) => handle<{ zone: string }>(res))
-    .then((b) => b.zone);
-}
 
 export function createEvent(payload: EventPayload): Promise<CalendarEvent> {
   return fetch(`${BASE}/events`, {

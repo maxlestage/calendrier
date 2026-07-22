@@ -298,6 +298,7 @@ pub async fn get_weather_cities(db: web::Data<DatabaseConnection>) -> impl Respo
 #[put("/weather-cities")]
 pub async fn put_weather_cities(
     db: web::Data<DatabaseConnection>,
+    snap: web::Data<Snapshot>,
     payload: web::Json<WeatherCitiesPayload>,
 ) -> impl Responder {
     let tokens: Vec<String> = payload
@@ -319,68 +320,12 @@ pub async fn put_weather_cities(
         return HttpResponse::InternalServerError()
             .json(serde_json::json!({ "error": e.to_string() }));
     }
-    // No events to add/remove: weather is served live and the cache key
-    // (selected place keys) changes with the selection.
+    // Weather itself is served live (the cache key follows the selection),
+    // but school vacations are events and track the zones of the selected
+    // places — keep them in sync.
+    crate::holidays::sync_vacations(db.get_ref()).await;
+    snap.refresh(db.get_ref()).await;
     HttpResponse::Ok().json(weather_cities_response(db.get_ref()).await)
-}
-
-// ---------------------------------------------------------------------------
-// School zone (vacances scolaires A/B/C)
-
-#[derive(Deserialize)]
-pub struct SchoolZonePayload {
-    pub zone: String,
-}
-
-#[get("/school-zone")]
-pub async fn get_school_zone(db: web::Data<DatabaseConnection>) -> impl Responder {
-    let zone = crate::holidays::selected_zone(db.get_ref()).await.unwrap_or_default();
-    HttpResponse::Ok().json(serde_json::json!({ "zone": zone }))
-}
-
-#[put("/school-zone")]
-pub async fn put_school_zone(
-    db: web::Data<DatabaseConnection>,
-    snap: web::Data<Snapshot>,
-    payload: web::Json<SchoolZonePayload>,
-) -> impl Responder {
-    let zone = payload.into_inner().zone.trim().to_lowercase();
-    if !zone.is_empty() && !["a", "b", "c"].contains(&zone.as_str()) {
-        return HttpResponse::BadRequest()
-            .json(serde_json::json!({ "error": format!("zone inconnue : {zone}") }));
-    }
-    let old = crate::holidays::selected_zone(db.get_ref()).await.unwrap_or_default();
-    if let Err(e) =
-        crate::settings::set(db.get_ref(), crate::holidays::ZONE_SETTING, &zone).await
-    {
-        return HttpResponse::InternalServerError()
-            .json(serde_json::json!({ "error": e.to_string() }));
-    }
-    if old != zone {
-        // Vacation events belong to the previous zone: drop them
-        let res = Event::delete_many()
-            .filter(event::Column::Color.eq(crate::holidays::HOLIDAY_COLOR))
-            .filter(event::Column::Title.starts_with("🎒"))
-            .exec(db.get_ref())
-            .await;
-        if let Err(e) = res {
-            log::warn!("could not delete school vacation events: {e}");
-        }
-        if !zone.is_empty() {
-            let year = chrono::Utc::now()
-                .with_timezone(&chrono_tz::Europe::Paris)
-                .format("%Y")
-                .to_string()
-                .parse()
-                .unwrap_or(2026);
-            let candidates = crate::holidays::school_vacations(&zone, year).await;
-            let inserted = crate::seed::insert_new_events(db.get_ref(), candidates).await;
-            log::info!("school zone change: {inserted} vacation events inserted");
-        }
-        snap.refresh(db.get_ref()).await;
-    }
-    let current = crate::holidays::selected_zone(db.get_ref()).await.unwrap_or_default();
-    HttpResponse::Ok().json(serde_json::json!({ "zone": current }))
 }
 
 // ---------------------------------------------------------------------------
@@ -571,6 +516,9 @@ pub async fn put_tide_spots(
         let inserted = crate::seed::insert_new_events(db.get_ref(), candidates).await;
         log::info!("tide selection change: {inserted} events inserted for {} new spots", added.len());
     }
+
+    // School vacations follow the zones of the selected places
+    crate::holidays::sync_vacations(db.get_ref()).await;
 
     snap.refresh(db.get_ref()).await;
     HttpResponse::Ok().json(tide_spots_response(db.get_ref()).await)

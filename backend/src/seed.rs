@@ -96,7 +96,8 @@ pub async fn seed(db: &DatabaseConnection) {
             candidates.extend(races);
         }
     }
-    if let Some(zone) = holidays::selected_zone(db).await {
+    // Vacation zones follow the selected beaches/cities automatically
+    for zone in holidays::auto_zones(db).await {
         candidates.extend(holidays::school_vacations(&zone, year).await);
     }
     candidates.extend(tmdb::fetch().await);
