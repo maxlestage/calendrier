@@ -19,6 +19,13 @@ export interface EventPayload {
   color: string | null;
 }
 
+export interface TideSpot {
+  key: string;
+  name: string;
+  group: "ocean" | "mer" | "manche" | "ports";
+  selected: boolean;
+}
+
 export const EVENT_COLORS = [
   "#4f6bed",
   "#0f9d58",
