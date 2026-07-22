@@ -51,8 +51,15 @@ export interface BeachWeatherDay {
 export interface BeachWeather {
   key: string;
   name: string;
+  /** Coast group ("ocean", "mer", …) or "ville" for a city */
   group: string;
   days: BeachWeatherDay[];
+}
+
+export interface WeatherCity {
+  key: string;
+  name: string;
+  selected: boolean;
 }
 
 export const EVENT_COLORS = [
