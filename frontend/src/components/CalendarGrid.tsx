@@ -1,18 +1,25 @@
-import type { CalendarEvent } from "../types";
+import type { BeachWeather, CalendarEvent } from "../types";
 import { TIDE_COLOR } from "../types";
-import { DAY_NAMES, eventCoversDay, isSameDay, monthGridDays, toTimeKey } from "../dates";
+import { DAY_NAMES, eventCoversDay, isSameDay, monthGridDays, toDateKey, toTimeKey } from "../dates";
+import { weatherIcon } from "../weather";
 
 interface Props {
   year: number;
   month: number;
   events: CalendarEvent[];
+  weather: BeachWeather[];
   selectedDay: Date;
   onSelectDay: (day: Date) => void;
 }
 
-export default function CalendarGrid({ year, month, events, selectedDay, onSelectDay }: Props) {
+export default function CalendarGrid({ year, month, events, weather, selectedDay, onSelectDay }: Props) {
   const days = monthGridDays(year, month);
   const today = new Date();
+  // Weather emoji per day cell, from the first selected place
+  const wxByDate = new Map<string, string>();
+  for (const d of weather[0]?.days ?? []) {
+    if (d.code !== null) wxByDate.set(d.date, weatherIcon(d.code).emoji);
+  }
 
   return (
     <div className="calendar">
@@ -48,6 +55,9 @@ export default function CalendarGrid({ year, month, events, selectedDay, onSelec
               onClick={() => onSelectDay(day)}
             >
               <span className={`day-number ${isToday ? "today" : ""}`}>{day.getDate()}</span>
+              {wxByDate.has(toDateKey(day)) && (
+                <span className="cell-wx">{wxByDate.get(toDateKey(day))}</span>
+              )}
               <span className="dots">
                 {dots.map((ev) => (
                   <span key={ev.id} className="dot" style={{ background: ev.color ?? "#4f6bed" }} />

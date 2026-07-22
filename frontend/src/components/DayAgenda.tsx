@@ -27,12 +27,25 @@ export default function DayAgenda({ day, events, weather, onEventClick, onAdd }:
         <ul className="beach-weather">
           {cards.map(({ spot, forecast }) => {
             const icon = weatherIcon(forecast.code);
+            // Pollen shown from "modéré" (≥20 grains/m³) upward
+            const pollenLabel =
+              forecast.pollen === null
+                ? null
+                : forecast.pollen >= 80
+                  ? "🤧 pollen fort"
+                  : forecast.pollen >= 20
+                    ? "🤧 pollen modéré"
+                    : null;
             const details = [
               forecast.wind !== null ? `💨 ${Math.round(forecast.wind)} km/h` : null,
               forecast.uv !== null ? `UV ${formatNumber(forecast.uv)}` : null,
               forecast.precip !== null ? `☔ ${Math.round(forecast.precip)} %` : null,
               forecast.wave !== null ? `🌊 ${formatNumber(forecast.wave)} m` : null,
               forecast.water !== null ? `💧 eau ${formatNumber(forecast.water)}°` : null,
+              forecast.sunrise && forecast.sunset
+                ? `🌅 ${forecast.sunrise} · 🌇 ${forecast.sunset}`
+                : null,
+              pollenLabel,
             ].filter(Boolean);
             return (
               <li key={spot.key} className="beach-weather-card" title={icon.label}>
@@ -63,7 +76,7 @@ export default function DayAgenda({ day, events, weather, onEventClick, onAdd }:
       ) : (
         <ul className="agenda-list">
           {sorted.map((ev) => (
-            <li key={ev.id}>
+            <li key={`${ev.id}-${ev.start}`}>
               <button className="agenda-item" onClick={() => onEventClick(ev)}>
                 <span className="agenda-bar" style={{ background: ev.color ?? "#4f6bed" }} />
                 <span className="agenda-time">
@@ -78,7 +91,10 @@ export default function DayAgenda({ day, events, weather, onEventClick, onAdd }:
                   )}
                 </span>
                 <span className="agenda-body">
-                  <span className="agenda-event-title">{ev.title}</span>
+                  <span className="agenda-event-title">
+                    {ev.title}
+                    {ev.recurrence && <span className="muted"> 🔁</span>}
+                  </span>
                   {ev.description && <span className="agenda-desc">{ev.description}</span>}
                 </span>
               </button>

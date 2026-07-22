@@ -153,6 +153,7 @@ pub fn seasons(year: i32) -> Vec<SeedCandidate> {
     SEASONS
         .iter()
         .map(|(m, d, symbol, name, article)| SeedCandidate {
+            all_day: None,
             date: format!("{year}-{m:02}-{d:02}"),
             title: format!("{symbol} Début de la saison {article}"),
             description: Some(format!("Astrologie — le Soleil entre en {name}")),
@@ -166,6 +167,7 @@ pub fn seasons(year: i32) -> Vec<SeedCandidate> {
 pub fn fireworks(year: i32) -> Vec<SeedCandidate> {
     let mk = |month: u32, day: u32, h1: u32, m1: u32, h2: u32, m2: u32, title: &str, desc: &str| {
         SeedCandidate {
+            all_day: None,
             date: format!("{year}-{month:02}-{day:02}"),
             title: title.into(),
             description: Some(desc.into()),
@@ -204,6 +206,7 @@ pub fn moon_phases(year: i32) -> Vec<SeedCandidate> {
             let (.., name, _) = SEASONS[sign];
             let utc = dt.with_timezone(&Utc);
             SeedCandidate {
+                all_day: None,
                 date: format!("{}-{:02}-{:02}", dt.year(), dt.month(), dt.day()),
                 title: if full {
                     format!("🌕 Pleine lune en {name}")

@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { fetchTideSpots, fetchWeatherCities, saveTideSpots, saveWeatherCities } from "../api";
+import {
+  fetchSchoolZone,
+  fetchTideSpots,
+  fetchWeatherCities,
+  saveSchoolZone,
+  saveTideSpots,
+  saveWeatherCities,
+} from "../api";
 import type { TideSpot, WeatherCity } from "../types";
 
 interface Props {
@@ -23,6 +30,7 @@ export default function TideSpotsModal({ onSaved, onClose }: Props) {
   const [cities, setCities] = useState<WeatherCity[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectedCities, setSelectedCities] = useState<Set<string>>(new Set());
+  const [zone, setZone] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -39,6 +47,9 @@ export default function TideSpotsModal({ onSaved, onClose }: Props) {
         setSelectedCities(new Set(list.filter((c) => c.selected).map((c) => c.key)));
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));
+    fetchSchoolZone()
+      .then(setZone)
+      .catch(() => setZone(""));
   }, []);
 
   const add = (key: string) => {
@@ -71,7 +82,11 @@ export default function TideSpotsModal({ onSaved, onClose }: Props) {
     setBusy(true);
     setError(null);
     try {
-      await Promise.all([saveTideSpots([...selected]), saveWeatherCities([...selectedCities])]);
+      await Promise.all([
+        saveTideSpots([...selected]),
+        saveWeatherCities([...selectedCities]),
+        saveSchoolZone(zone),
+      ]);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -92,6 +107,24 @@ export default function TideSpotsModal({ onSaved, onClose }: Props) {
           </button>
         </div>
         {!spots && !cities && !error && <p className="muted">Chargement…</p>}
+        <section className="tide-group">
+          <h3>🎒 Vacances scolaires</h3>
+          <p className="muted small">
+            A : Bordeaux, Lyon, Grenoble, Poitiers… · B : Aix-Marseille, Lille, Nice, Rennes… ·
+            C : Paris, Toulouse, Montpellier, Versailles…
+          </p>
+          <select
+            className="tide-select"
+            value={zone}
+            onChange={(e) => setZone(e.target.value)}
+            disabled={busy}
+          >
+            <option value="">Aucune zone (pas de vacances affichées)</option>
+            <option value="a">Zone A</option>
+            <option value="b">Zone B</option>
+            <option value="c">Zone C</option>
+          </select>
+        </section>
         {cities && (
           <section className="tide-group">
             <h3>🏙️ Villes de France — météo</h3>
