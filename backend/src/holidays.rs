@@ -9,17 +9,111 @@ use crate::seed::SeedCandidate;
 /// Green used by holidays + school vacations (distinct from the user palette).
 pub const HOLIDAY_COLOR: &str = "#2e7d32";
 
-pub const ZONE_SETTING: &str = "school_zone";
+// ---------------------------------------------------------------------------
+// Automatic zone detection: every beach/city of the catalogs belongs to an
+// académie, hence to a vacation zone. The zones of the user's selected
+// places decide which school calendars are shown — nothing to configure.
 
-/// The selected school zone ("a" | "b" | "c"), if any.
-pub async fn selected_zone(db: &sea_orm::DatabaseConnection) -> Option<String> {
-    let z = crate::settings::get(db, ZONE_SETTING).await?;
-    let z = z.trim().to_lowercase();
-    if ["a", "b", "c"].contains(&z.as_str()) {
-        Some(z)
+/// Zone A académies: Besançon, Bordeaux, Clermont, Dijon, Grenoble,
+/// Limoges, Lyon, Poitiers.
+const ZONE_A_KEYS: &[&str] = &[
+    // plages (Poitiers/Bordeaux)
+    "ile-de-re", "ile-d-oleron", "royan", "la-rochelle", "soulac", "montalivet",
+    "lacanau", "cap-ferret", "arcachon", "biscarrosse", "mimizan", "moliets",
+    "seignosse", "hossegor", "capbreton", "anglet", "biarritz",
+    "saint-jean-de-luz", "hendaye",
+    // villes
+    "lyon", "saint-etienne", "grenoble", "dijon", "clermont-ferrand", "annecy",
+    "besancon", "limoges", "poitiers", "la-rochelle-ville", "pau", "bayonne",
+    "chambery", "bordeaux",
+];
+
+/// Zone C académies: Créteil, Montpellier, Paris, Toulouse, Versailles.
+const ZONE_C_KEYS: &[&str] = &[
+    // plages (Montpellier)
+    "argeles", "collioure", "canet", "leucate", "gruissan", "narbonne-plage",
+    "valras", "cap-d-agde", "sete", "palavas", "la-grande-motte",
+    "le-grau-du-roi",
+    // villes
+    "paris", "toulouse", "montpellier", "nimes", "perpignan",
+];
+
+/// Corse has its own calendar in the dataset.
+const CORSE_KEYS: &[&str] = &["calvi", "ajaccio", "porto-vecchio", "ajaccio-ville", "bastia"];
+
+/// Zone of a catalog key ("a" | "b" | "c" | "corse"). Everything not listed
+/// above is zone B (Aix-Marseille, Amiens, Lille, Nancy-Metz, Nantes, Nice,
+/// Normandie, Orléans-Tours, Reims, Rennes, Strasbourg — most of the coast).
+pub fn zone_for_key(key: &str) -> &'static str {
+    if ZONE_A_KEYS.contains(&key) {
+        "a"
+    } else if ZONE_C_KEYS.contains(&key) {
+        "c"
+    } else if CORSE_KEYS.contains(&key) {
+        "corse"
     } else {
-        None
+        "b"
     }
+}
+
+fn zone_label(zone: &str) -> String {
+    if zone == "corse" {
+        "Corse".into()
+    } else {
+        format!("Zone {}", zone.to_uppercase())
+    }
+}
+
+/// Zones derived from the selected beaches and cities, sorted, deduplicated.
+pub async fn auto_zones(db: &sea_orm::DatabaseConnection) -> Vec<String> {
+    let mut zones = std::collections::BTreeSet::new();
+    for p in crate::tides::selected_ports(db).await {
+        zones.insert(zone_for_key(p.key).to_string());
+    }
+    for c in crate::weather::selected_cities(db).await {
+        zones.insert(zone_for_key(c.key).to_string());
+    }
+    zones.into_iter().collect()
+}
+
+/// Bring stored vacation events in line with the current automatic zones:
+/// drop periods of zones no longer selected, fetch and insert the rest.
+/// Returns the number of inserted events.
+pub async fn sync_vacations(db: &sea_orm::DatabaseConnection) -> usize {
+    use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+
+    use crate::entities::event::{self, Entity as Event};
+
+    let zones = auto_zones(db).await;
+    let labels: Vec<String> = zones.iter().map(|z| zone_label(z)).collect();
+    let existing = Event::find()
+        .filter(event::Column::Color.eq(HOLIDAY_COLOR))
+        .filter(event::Column::Title.starts_with("🎒"))
+        .all(db)
+        .await
+        .unwrap_or_default();
+    for ev in existing {
+        let keep = labels.iter().any(|l| ev.title.ends_with(&format!("({l})")));
+        if !keep {
+            if let Err(e) = Event::delete_by_id(ev.id).exec(db).await {
+                log::warn!("could not delete stale vacation event: {e}");
+            }
+        }
+    }
+    if zones.is_empty() {
+        return 0;
+    }
+    let year = chrono::Utc::now()
+        .with_timezone(&chrono_tz::Europe::Paris)
+        .format("%Y")
+        .to_string()
+        .parse()
+        .unwrap_or(2026);
+    let mut candidates = Vec::new();
+    for zone in &zones {
+        candidates.extend(school_vacations(zone, year).await);
+    }
+    crate::seed::insert_new_events(db, candidates).await
 }
 
 /// Easter Sunday (Gregorian) — anonymous algorithm (Meeus ch. 8).
@@ -108,7 +202,7 @@ pub async fn school_vacations(zone: &str, year: i32) -> Vec<SeedCandidate> {
     let base = std::env::var("SCHOOL_API_URL").unwrap_or_else(|_| {
         "https://data.education.gouv.fr/api/records/1.0/search/".into()
     });
-    let zone_label = format!("Zone {}", zone.to_uppercase());
+    let zone_label = zone_label(zone);
     let client = match reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .build()

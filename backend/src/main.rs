@@ -87,8 +87,6 @@ async fn main() -> std::io::Result<()> {
                     .service(handlers::get_beach_weather)
                     .service(handlers::get_weather_cities)
                     .service(handlers::put_weather_cities)
-                    .service(handlers::get_school_zone)
-                    .service(handlers::put_school_zone)
                     .service(handlers::calendar_ics),
             );
         if serve_static {
