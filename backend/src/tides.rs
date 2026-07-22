@@ -1,14 +1,21 @@
-//! Tides for French reference ports, via the WorldTides API (authoritative
-//! SHOM/FES-based predictions). Only active when the WORLDTIDES_API_KEY
-//! config var is set (free key at worldtides.info).
+//! Tides for French beaches and reference ports.
 //!
-//! Tides are strongly location-specific and safety-relevant (foreshore
-//! walking, fishing), so rather than a hand-rolled harmonic model this uses
-//! official predictions. Without a key, no tide events are produced.
+//! Two sources, picked automatically:
+//! - **WorldTides** (authoritative SHOM/FES-based extremes) when the
+//!   WORLDTIDES_API_KEY config var is set;
+//! - otherwise a **zero-config fallback**: the hourly sea-level curve from
+//!   the free, keyless Open-Meteo marine API (hydrodynamic tide model),
+//!   whose extremes are located by quadratic interpolation around the
+//!   hourly samples (≈ minutes of timing error, flagged in the event
+//!   description).
 //!
-//! Because each API call consumes quota, the seed layer only asks for ports
-//! whose stored horizon is running low (see `seed`), and the fetched window
-//! is bounded by TIDE_DAYS (default 14 days).
+//! Tides are location-specific and safety-relevant (foreshore walking,
+//! fishing), which is why both paths rely on real tide models rather than a
+//! hand-rolled harmonic fit.
+//!
+//! Because each WorldTides call consumes quota, the seed layer only asks
+//! for ports whose stored horizon is running low (see `seed`), and the
+//! fetched window is bounded by TIDE_DAYS (default 14 days).
 
 use serde::Deserialize;
 
@@ -157,15 +164,19 @@ struct Extreme {
     kind: String,
 }
 
-/// Fetch tides for the given ports. Returns an empty list when no key is set
-/// or every request fails.
+/// Fetch tides for the given ports: WorldTides when a key is configured,
+/// otherwise the keyless Open-Meteo fallback. Empty when every request fails.
 pub async fn fetch(ports: &[&Port], start_unix: i64) -> Vec<SeedCandidate> {
-    let Ok(key) = std::env::var("WORLDTIDES_API_KEY") else {
-        return Vec::new();
-    };
     if ports.is_empty() {
         return Vec::new();
     }
+    match std::env::var("WORLDTIDES_API_KEY") {
+        Ok(key) => fetch_worldtides(ports, start_unix, &key).await,
+        Err(_) => fetch_openmeteo(ports, start_unix).await,
+    }
+}
+
+async fn fetch_worldtides(ports: &[&Port], start_unix: i64, key: &str) -> Vec<SeedCandidate> {
     let base = std::env::var("WORLDTIDES_API_URL")
         .unwrap_or_else(|_| "https://www.worldtides.info/api/v3".into());
     let length = horizon_days() * 86400;
@@ -209,27 +220,159 @@ pub async fn fetch(ports: &[&Port], start_unix: i64) -> Vec<SeedCandidate> {
                 continue;
             };
             let high = ex.kind.eq_ignore_ascii_case("high");
-            let iso = instant.format("%Y-%m-%dT%H:%M:%SZ").to_string();
-            let end = (instant + chrono::Duration::minutes(10))
-                .format("%Y-%m-%dT%H:%M:%SZ")
-                .to_string();
-            out.push(SeedCandidate {
-                date: instant.format("%Y-%m-%d").to_string(),
-                title: format!(
-                    "🌊 {} — {}",
-                    port.name,
-                    if high { "Pleine mer" } else { "Basse mer" }
-                ),
-                description: Some(format!(
-                    "Marée — hauteur {:.2} m (niveau moyen)",
-                    ex.height
-                )),
-                color: Some(TIDE_COLOR.into()),
-                start: Some(iso),
-                end: Some(end),
-            });
+            out.push(tide_candidate(port.name, instant, high, ex.height, ""));
         }
         log::info!("fetched tides for {}", port.name);
+    }
+    out
+}
+
+fn tide_candidate(
+    port_name: &str,
+    instant: chrono::DateTime<chrono::Utc>,
+    high: bool,
+    height: f64,
+    source_note: &str,
+) -> SeedCandidate {
+    let iso = instant.format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let end = (instant + chrono::Duration::minutes(10))
+        .format("%Y-%m-%dT%H:%M:%SZ")
+        .to_string();
+    SeedCandidate {
+        date: instant.format("%Y-%m-%d").to_string(),
+        title: format!(
+            "🌊 {} — {}",
+            port_name,
+            if high { "Pleine mer" } else { "Basse mer" }
+        ),
+        description: Some(format!(
+            "Marée — hauteur {height:.2} m (niveau moyen){source_note}"
+        )),
+        color: Some(TIDE_COLOR.into()),
+        start: Some(iso),
+        end: Some(end),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Keyless fallback: extremes from Open-Meteo's hourly sea-level curve
+
+#[derive(Deserialize, Default)]
+struct SeaLevelHourly {
+    #[serde(default)]
+    time: Vec<String>,
+    #[serde(default)]
+    sea_level_height_msl: Vec<Option<f64>>,
+}
+
+#[derive(Deserialize)]
+struct SeaLevelResponse {
+    #[serde(default)]
+    hourly: Option<SeaLevelHourly>,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum OneOrMany<T> {
+    Many(Vec<T>),
+    One(T),
+}
+
+/// Tides without any API key: fetch the hourly sea-level series (Open-Meteo
+/// marine, free) for all ports in one batched call, then locate each local
+/// extreme and refine its time/height with a parabola through the three
+/// surrounding samples (timing error of a few minutes on a smooth ~12h25
+/// tidal curve).
+async fn fetch_openmeteo(ports: &[&Port], start_unix: i64) -> Vec<SeedCandidate> {
+    let base = std::env::var("MARINE_API_URL")
+        .unwrap_or_else(|_| "https://marine-api.open-meteo.com/v1/marine".into());
+    let days = horizon_days().clamp(1, 16);
+    let lat: Vec<String> = ports.iter().map(|p| p.lat.to_string()).collect();
+    let lon: Vec<String> = ports.iter().map(|p| p.lon.to_string()).collect();
+    let url = format!(
+        "{base}?latitude={}&longitude={}&hourly=sea_level_height_msl\
+         &timezone=UTC&forecast_days={days}",
+        lat.join(","),
+        lon.join(",")
+    );
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return Vec::new(),
+    };
+    let resp = match client.get(&url).send().await {
+        Ok(r) if r.status().is_success() => r,
+        Ok(r) => {
+            log::warn!("Open-Meteo marine returned {} for tides", r.status());
+            return Vec::new();
+        }
+        Err(e) => {
+            log::warn!("Open-Meteo marine unreachable for tides: {e}");
+            return Vec::new();
+        }
+    };
+    let parsed: OneOrMany<SeaLevelResponse> = match resp.json().await {
+        Ok(p) => p,
+        Err(e) => {
+            log::warn!("could not parse Open-Meteo sea level response: {e}");
+            return Vec::new();
+        }
+    };
+    let responses = match parsed {
+        OneOrMany::Many(v) => v,
+        OneOrMany::One(x) => vec![x],
+    };
+
+    let mut out = Vec::new();
+    for (port, resp) in ports.iter().zip(responses.iter()) {
+        let Some(hourly) = &resp.hourly else { continue };
+        let times = &hourly.time;
+        let levels = &hourly.sea_level_height_msl;
+        let n = times.len().min(levels.len());
+        let mut found = 0;
+        for i in 1..n.saturating_sub(1) {
+            let (Some(prev), Some(cur), Some(next)) = (levels[i - 1], levels[i], levels[i + 1])
+            else {
+                continue;
+            };
+            // Local extreme (strict on one side so a flat pair counts once)
+            let is_max = cur >= prev && cur > next;
+            let is_min = cur <= prev && cur < next;
+            if !is_max && !is_min {
+                continue;
+            }
+            let Ok(naive) =
+                chrono::NaiveDateTime::parse_from_str(&times[i], "%Y-%m-%dT%H:%M")
+            else {
+                continue;
+            };
+            // Parabola through (-1h, 0, +1h): vertex gives the refined
+            // extreme time and height
+            let a2 = prev + next - 2.0 * cur; // = 2a
+            let b = (next - prev) / 2.0;
+            let (dt_hours, height) = if a2.abs() > 1e-9 {
+                let dt = (-b / a2).clamp(-1.0, 1.0);
+                (dt, cur - b * b / (2.0 * a2))
+            } else {
+                (0.0, cur)
+            };
+            let instant = naive.and_utc()
+                + chrono::Duration::seconds((dt_hours * 3600.0).round() as i64);
+            if instant.timestamp() < start_unix {
+                continue;
+            }
+            out.push(tide_candidate(
+                port.name,
+                instant,
+                is_max,
+                height,
+                " · prévision Open-Meteo",
+            ));
+            found += 1;
+        }
+        log::info!("computed {found} tide extremes for {} (Open-Meteo)", port.name);
     }
     out
 }
