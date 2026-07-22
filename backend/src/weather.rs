@@ -1,7 +1,7 @@
-//! Beach weather for the selected tide spots, via the Open-Meteo APIs
-//! (free, no key): daily forecast (temperature, wind, UV, rain) from
-//! api.open-meteo.com and sea conditions (water temperature, wave height)
-//! from marine-api.open-meteo.com.
+//! Weather for the selected beaches (tide spots) AND French cities, via the
+//! Open-Meteo APIs (free, no key): daily forecast (temperature, wind, UV,
+//! rain) from api.open-meteo.com and — for sea spots only — sea conditions
+//! (water temperature, wave height) from marine-api.open-meteo.com.
 //!
 //! Unlike tides, weather changes constantly, so it is NOT stored as events:
 //! `GET /api/beach-weather` serves it live, behind a small in-memory cache
@@ -10,7 +10,113 @@
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
 
-use crate::tides::Port;
+/// A place we can fetch weather for — a beach from the tide catalog or a
+/// city from `CITIES`.
+#[derive(Clone, Copy)]
+pub struct Place {
+    pub key: &'static str,
+    pub name: &'static str,
+    pub group: &'static str,
+    pub lat: f64,
+    pub lon: f64,
+    /// Marine data (waves, water temperature) only makes sense by the sea
+    pub sea: bool,
+}
+
+pub struct City {
+    pub key: &'static str,
+    pub name: &'static str,
+    pub lat: f64,
+    pub lon: f64,
+}
+
+/// Main French cities (metropole + Corse) for the in-app weather dropdown.
+pub static CITIES: &[City] = &[
+    City { key: "paris", name: "Paris", lat: 48.8566, lon: 2.3522 },
+    City { key: "marseille-ville", name: "Marseille", lat: 43.2965, lon: 5.3698 },
+    City { key: "lyon", name: "Lyon", lat: 45.7640, lon: 4.8357 },
+    City { key: "toulouse", name: "Toulouse", lat: 43.6045, lon: 1.4440 },
+    City { key: "nice-ville", name: "Nice", lat: 43.7102, lon: 7.2620 },
+    City { key: "nantes", name: "Nantes", lat: 47.2184, lon: -1.5536 },
+    City { key: "montpellier", name: "Montpellier", lat: 43.6108, lon: 3.8767 },
+    City { key: "strasbourg", name: "Strasbourg", lat: 48.5734, lon: 7.7521 },
+    City { key: "bordeaux", name: "Bordeaux", lat: 44.8378, lon: -0.5792 },
+    City { key: "lille", name: "Lille", lat: 50.6292, lon: 3.0573 },
+    City { key: "rennes", name: "Rennes", lat: 48.1173, lon: -1.6778 },
+    City { key: "reims", name: "Reims", lat: 49.2583, lon: 4.0317 },
+    City { key: "toulon", name: "Toulon", lat: 43.1242, lon: 5.9280 },
+    City { key: "saint-etienne", name: "Saint-Étienne", lat: 45.4397, lon: 4.3872 },
+    City { key: "le-havre", name: "Le Havre", lat: 49.4944, lon: 0.1079 },
+    City { key: "grenoble", name: "Grenoble", lat: 45.1885, lon: 5.7245 },
+    City { key: "dijon", name: "Dijon", lat: 47.3220, lon: 5.0415 },
+    City { key: "angers", name: "Angers", lat: 47.4784, lon: -0.5632 },
+    City { key: "nimes", name: "Nîmes", lat: 43.8367, lon: 4.3601 },
+    City { key: "clermont-ferrand", name: "Clermont-Ferrand", lat: 45.7772, lon: 3.0870 },
+    City { key: "le-mans", name: "Le Mans", lat: 48.0061, lon: 0.1996 },
+    City { key: "aix-en-provence", name: "Aix-en-Provence", lat: 43.5297, lon: 5.4474 },
+    City { key: "brest-ville", name: "Brest", lat: 48.3904, lon: -4.4861 },
+    City { key: "tours", name: "Tours", lat: 47.3941, lon: 0.6848 },
+    City { key: "amiens", name: "Amiens", lat: 49.8942, lon: 2.2957 },
+    City { key: "limoges", name: "Limoges", lat: 45.8336, lon: 1.2611 },
+    City { key: "annecy", name: "Annecy", lat: 45.8992, lon: 6.1294 },
+    City { key: "perpignan", name: "Perpignan", lat: 42.6887, lon: 2.8948 },
+    City { key: "besancon", name: "Besançon", lat: 47.2378, lon: 6.0241 },
+    City { key: "metz", name: "Metz", lat: 49.1193, lon: 6.1757 },
+    City { key: "orleans", name: "Orléans", lat: 47.9029, lon: 1.9093 },
+    City { key: "rouen", name: "Rouen", lat: 49.4431, lon: 1.0993 },
+    City { key: "mulhouse", name: "Mulhouse", lat: 47.7508, lon: 7.3359 },
+    City { key: "caen", name: "Caen", lat: 49.1829, lon: -0.3707 },
+    City { key: "nancy", name: "Nancy", lat: 48.6921, lon: 6.1844 },
+    City { key: "avignon", name: "Avignon", lat: 43.9493, lon: 4.8055 },
+    City { key: "poitiers", name: "Poitiers", lat: 46.5802, lon: 0.3404 },
+    City { key: "la-rochelle-ville", name: "La Rochelle", lat: 46.1603, lon: -1.1511 },
+    City { key: "pau", name: "Pau", lat: 43.2951, lon: -0.3708 },
+    City { key: "bayonne", name: "Bayonne", lat: 43.4929, lon: -1.4748 },
+    City { key: "ajaccio-ville", name: "Ajaccio", lat: 41.9192, lon: 8.7386 },
+    City { key: "bastia", name: "Bastia", lat: 42.6977, lon: 9.4508 },
+    City { key: "chambery", name: "Chambéry", lat: 45.5646, lon: 5.9178 },
+    City { key: "vannes", name: "Vannes", lat: 47.6582, lon: -2.7608 },
+    City { key: "quimper", name: "Quimper", lat: 47.9960, lon: -4.0972 },
+];
+
+pub const CITIES_SETTING: &str = "weather_cities";
+
+pub async fn selected_cities(db: &sea_orm::DatabaseConnection) -> Vec<&'static City> {
+    let Some(saved) = crate::settings::get(db, CITIES_SETTING).await else {
+        return Vec::new();
+    };
+    let tokens = crate::tides::parse_tokens(&saved);
+    CITIES
+        .iter()
+        .filter(|c| tokens.iter().any(|t| t == c.key))
+        .collect()
+}
+
+/// Everything weather-worthy the user selected: beaches (with marine data)
+/// then cities.
+pub async fn selected_places(db: &sea_orm::DatabaseConnection) -> Vec<Place> {
+    let mut places: Vec<Place> = crate::tides::selected_ports(db)
+        .await
+        .into_iter()
+        .map(|p| Place {
+            key: p.key,
+            name: p.name,
+            group: p.group,
+            lat: p.lat,
+            lon: p.lon,
+            sea: true,
+        })
+        .collect();
+    places.extend(selected_cities(db).await.into_iter().map(|c| Place {
+        key: c.key,
+        name: c.name,
+        group: "ville",
+        lat: c.lat,
+        lon: c.lon,
+        sea: false,
+    }));
+    places
+}
 
 /// Forecast horizon in days (Open-Meteo free tier goes to 16).
 const FORECAST_DAYS: u32 = 7;
@@ -163,15 +269,16 @@ fn opt<T: Copy>(v: &[Option<T>], i: usize) -> Option<T> {
     v.get(i).copied().flatten()
 }
 
-/// Fetch beach weather for the given spots, one batched call per API.
-/// The marine call is best-effort: if it fails, weather is served without
-/// water temperature / wave height.
-pub async fn fetch(ports: &[&Port]) -> Vec<SpotWeather> {
-    if ports.is_empty() {
+/// Fetch weather for the given places, one batched call per API. The
+/// marine call only covers sea places (waves/water temperature are
+/// meaningless inland — and an inland point could poison the whole batch)
+/// and is best-effort: if it fails, weather is served without those fields.
+pub async fn fetch(places: &[Place]) -> Vec<SpotWeather> {
+    if places.is_empty() {
         return Vec::new();
     }
-    let lat: Vec<String> = ports.iter().map(|p| p.lat.to_string()).collect();
-    let lon: Vec<String> = ports.iter().map(|p| p.lon.to_string()).collect();
+    let lat: Vec<String> = places.iter().map(|p| p.lat.to_string()).collect();
+    let lon: Vec<String> = places.iter().map(|p| p.lon.to_string()).collect();
     let (lat, lon) = (lat.join(","), lon.join(","));
 
     let client = match reqwest::Client::builder()
@@ -201,22 +308,46 @@ pub async fn fetch(ports: &[&Port]) -> Vec<SpotWeather> {
         None => return Vec::new(),
     };
 
-    let marine_base = std::env::var("MARINE_API_URL")
-        .unwrap_or_else(|_| "https://marine-api.open-meteo.com/v1/marine".into());
-    let marine_url = format!(
-        "{marine_base}?latitude={lat}&longitude={lon}\
-         &daily=wave_height_max&hourly=sea_surface_temperature\
-         &timezone=Europe%2FParis&forecast_days={FORECAST_DAYS}"
-    );
-    let marines: Vec<MarineResponse> =
+    // Position of each place in the (sea-only) marine batch
+    let sea_positions: Vec<Option<usize>> = {
+        let mut next = 0usize;
+        places
+            .iter()
+            .map(|p| {
+                if p.sea {
+                    let pos = next;
+                    next += 1;
+                    Some(pos)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    };
+    let sea_places: Vec<&Place> = places.iter().filter(|p| p.sea).collect();
+    let marines: Vec<MarineResponse> = if sea_places.is_empty() {
+        Vec::new()
+    } else {
+        let mlat: Vec<String> = sea_places.iter().map(|p| p.lat.to_string()).collect();
+        let mlon: Vec<String> = sea_places.iter().map(|p| p.lon.to_string()).collect();
+        let marine_base = std::env::var("MARINE_API_URL")
+            .unwrap_or_else(|_| "https://marine-api.open-meteo.com/v1/marine".into());
+        let marine_url = format!(
+            "{marine_base}?latitude={}&longitude={}\
+             &daily=wave_height_max&hourly=sea_surface_temperature\
+             &timezone=Europe%2FParis&forecast_days={FORECAST_DAYS}",
+            mlat.join(","),
+            mlon.join(",")
+        );
         match fetch_json::<OneOrMany<MarineResponse>>(&client, &marine_url, "Open-Meteo marine")
             .await
         {
             Some(r) => r.into_vec(),
             None => Vec::new(),
-        };
+        }
+    };
 
-    ports
+    places
         .iter()
         .enumerate()
         .map(|(i, port)| {
@@ -224,12 +355,11 @@ pub async fn fetch(ports: &[&Port]) -> Vec<SpotWeather> {
                 .get(i)
                 .and_then(|f| f.daily.as_ref())
                 .cloned_or_default();
-            let marine_daily = marines
-                .get(i)
+            let marine = sea_positions[i].and_then(|pos| marines.get(pos));
+            let marine_daily = marine
                 .and_then(|m| m.daily.as_ref())
                 .cloned_or_default();
-            let marine_hourly = marines
-                .get(i)
+            let marine_hourly = marine
                 .and_then(|m| m.hourly.as_ref())
                 .cloned_or_default();
 
@@ -274,8 +404,8 @@ pub async fn fetch(ports: &[&Port]) -> Vec<SpotWeather> {
 }
 
 /// Cached wrapper used by the handler.
-pub async fn for_ports(cache: &WeatherCache, ports: &[&Port]) -> Vec<SpotWeather> {
-    let spots_key: String = ports
+pub async fn for_places(cache: &WeatherCache, places: &[Place]) -> Vec<SpotWeather> {
+    let spots_key: String = places
         .iter()
         .map(|p| p.key)
         .collect::<Vec<_>>()
@@ -284,7 +414,7 @@ pub async fn for_ports(cache: &WeatherCache, ports: &[&Port]) -> Vec<SpotWeather
     if let Some(hit) = cache.get(&spots_key, now) {
         return hit;
     }
-    let fresh = fetch(ports).await;
+    let fresh = fetch(places).await;
     if !fresh.is_empty() {
         cache.put(spots_key, now, fresh.clone());
     }

@@ -39,7 +39,9 @@ export default function DayAgenda({ day, events, weather, onEventClick, onAdd }:
                 <span className="beach-weather-emoji">{icon.emoji}</span>
                 <span className="beach-weather-body">
                   <span className="beach-weather-head">
-                    <span className="beach-weather-name">🏖️ {spot.name}</span>
+                    <span className="beach-weather-name">
+                      {spot.group === "ville" ? "🏙️" : "🏖️"} {spot.name}
+                    </span>
                     <span className="beach-weather-temp">
                       {forecast.tmax !== null ? `${Math.round(forecast.tmax)}°` : "—"}
                       {forecast.tmin !== null && (

@@ -1,4 +1,4 @@
-import type { BeachWeather, CalendarEvent, EventPayload, TideSpot } from "./types";
+import type { BeachWeather, CalendarEvent, EventPayload, TideSpot, WeatherCity } from "./types";
 
 const BASE = "/api";
 
@@ -58,4 +58,16 @@ export function saveTideSpots(spots: string[]): Promise<TideSpot[]> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ spots }),
   }).then((res) => handle<TideSpot[]>(res));
+}
+
+export function fetchWeatherCities(): Promise<WeatherCity[]> {
+  return fetch(`${BASE}/weather-cities`).then((res) => handle<WeatherCity[]>(res));
+}
+
+export function saveWeatherCities(cities: string[]): Promise<WeatherCity[]> {
+  return fetch(`${BASE}/weather-cities`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cities }),
+  }).then((res) => handle<WeatherCity[]>(res));
 }
