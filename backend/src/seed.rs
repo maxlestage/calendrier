@@ -226,6 +226,56 @@ async fn insert_candidates(
     inserted
 }
 
+/// Import full event models (device-backup restore), deduplicated against
+/// the database by normalized title + slot, keeping recurrence. Events older
+/// than the retention window are skipped unless recurring.
+pub async fn import_events(db: &DatabaseConnection, events: Vec<event::Model>) -> usize {
+    let existing = match Event::find().all(db).await {
+        Ok(evs) => evs,
+        Err(e) => {
+            log::warn!("could not list events, skipping import: {e}");
+            return 0;
+        }
+    };
+    let mut seen: HashSet<(String, String)> = existing
+        .iter()
+        .filter(|ev| ev.start.len() >= 10)
+        .map(|ev| (normalize(&ev.title), dedup_slot(&ev.start, ev.all_day)))
+        .collect();
+    let cutoff = three_months_ago();
+    let mut inserted = 0usize;
+    for ev in events {
+        if ev.start.len() < 10 {
+            continue;
+        }
+        if ev.end < cutoff && ev.recurrence.is_none() {
+            continue;
+        }
+        let key = (normalize(&ev.title), dedup_slot(&ev.start, ev.all_day));
+        if seen.contains(&key) {
+            continue;
+        }
+        let active = event::ActiveModel {
+            title: Set(ev.title),
+            description: Set(ev.description),
+            start: Set(ev.start),
+            end: Set(ev.end),
+            all_day: Set(ev.all_day),
+            color: Set(ev.color),
+            recurrence: Set(ev.recurrence),
+            ..Default::default()
+        };
+        match active.insert(db).await {
+            Ok(_) => {
+                inserted += 1;
+                seen.insert(key);
+            }
+            Err(e) => log::warn!("failed to import an event: {e}"),
+        }
+    }
+    inserted
+}
+
 /// Insert freshly fetched events with a dedup index rebuilt from the
 /// database (standalone entry point for request handlers).
 pub async fn insert_new_events(db: &DatabaseConnection, candidates: Vec<SeedCandidate>) -> usize {

@@ -1,3 +1,4 @@
+import type { ServerState } from "./storage";
 import type { BeachWeather, CalendarEvent, EventPayload, TideSpot, WeatherCity } from "./types";
 
 const BASE = "/api";
@@ -68,6 +69,18 @@ export function saveTideSpots(spots: string[]): Promise<TideSpot[]> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ spots }),
   }).then((res) => handle<TideSpot[]>(res));
+}
+
+export function fetchState(): Promise<ServerState> {
+  return fetch(`${BASE}/state`).then((res) => handle<ServerState>(res));
+}
+
+export function importState(state: Partial<ServerState>): Promise<void> {
+  return fetch(`${BASE}/import`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ events: state.events ?? [], settings: state.settings ?? [] }),
+  }).then((res) => handle<unknown>(res)) as Promise<void>;
 }
 
 export function fetchWeatherCities(): Promise<WeatherCity[]> {

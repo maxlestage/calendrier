@@ -4,8 +4,17 @@ import DayAgenda from "./components/DayAgenda";
 import EventModal from "./components/EventModal";
 import SearchModal from "./components/SearchModal";
 import TideSpotsModal from "./components/TideSpotsModal";
-import { createEvent, deleteEvent, fetchBeachWeather, fetchEvents, updateEvent } from "./api";
+import {
+  createEvent,
+  deleteEvent,
+  fetchBeachWeather,
+  fetchEvents,
+  fetchState,
+  importState,
+  updateEvent,
+} from "./api";
 import { eventCoversDay, MONTH_NAMES, monthGridDays } from "./dates";
+import { getSetting, loadLocal, MARKER_KEY, newMarker, saveLocal } from "./storage";
 import type { BeachWeather, CalendarEvent, EventPayload } from "./types";
 
 interface ModalState {
@@ -41,9 +50,45 @@ export default function App() {
         setError(null);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));
+    // Keep the on-device backup in step with the server. Only states that
+    // carry the backup marker are stored: a marker-less snapshot (server
+    // freshly booted, marker not written yet) must never overwrite a good
+    // local copy — the marker is what loss detection compares.
+    fetchState()
+      .then((s) => {
+        if (getSetting(s, MARKER_KEY)) saveLocal(s);
+      })
+      .catch(() => {});
   }, [from, to]);
 
   useEffect(reload, [reload]);
+
+  // Device safety net: if the server rebooted with an empty database (its
+  // backup marker is gone), push the phone's local copy back, then make
+  // sure a marker exists and refresh the local copy.
+  useEffect(() => {
+    (async () => {
+      try {
+        let server = await fetchState();
+        const local = loadLocal();
+        const localMarker = local ? getSetting(local, MARKER_KEY) : null;
+        if (local && localMarker && getSetting(server, MARKER_KEY) !== localMarker) {
+          await importState(local);
+          server = await fetchState();
+          reload();
+          reloadWeather();
+        }
+        if (!getSetting(server, MARKER_KEY)) {
+          await importState({ settings: [{ key: MARKER_KEY, value: newMarker() }] });
+          server = await fetchState();
+        }
+        saveLocal(server);
+      } catch {
+        // Offline or server unreachable: the safety net simply waits.
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Beach weather for the selected spots (best-effort: silent on failure)
   const reloadWeather = useCallback(() => {

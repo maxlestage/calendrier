@@ -30,13 +30,22 @@ démarrage — rien d'autre à faire.
    - `HEROKU_API_KEY` = ta clé
    - `HEROKU_APP_NAME` = le nom exact de l'app (ex. `calendrier-89594ce603e6`)
 
-Sans ces deux variables, l'app fonctionne mais les événements sont perdus à
-chaque redémarrage du dyno (au moins une fois par jour). Limites : seuls les
-3 derniers mois sont conservés, un crash brutal (sans SIGTERM) perd les
-changements depuis le dernier arrêt propre, et la sauvegarde doit tenir dans
-une config var (~32 Ko compressés, largement assez pour un agenda personnel).
-`GET /api/export` renvoie à tout moment le snapshot en JSON si tu veux une
-copie manuelle.
+**Filet de sécurité côté téléphone (aucune configuration)** : l'app web
+garde en plus une copie de l'état (événements + réglages) dans le stockage
+persistant de l'appareil (webview iOS / PWA / navigateur). À chaque
+ouverture, elle compare un marqueur : si le serveur a redémarré sur une
+base vide (config vars absentes, crash brutal sans SIGTERM…), le téléphone
+**repousse automatiquement sa copie** vers le serveur (`GET /api/state`,
+`POST /api/import`, import dédupliqué). Il suffit donc d'ouvrir l'app pour
+retrouver ses données — la sauvegarde Heroku reste utile pour restaurer
+*sans* ouvrir l'app (abonnement ICS, autre appareil).
+
+Sans les deux variables ci-dessus, la sauvegarde côté serveur est inactive ;
+le filet côté téléphone prend le relais dès que tu ouvres l'app. Limites :
+seuls les 3 derniers mois sont conservés (les événements récurrents le sont
+toujours), et la sauvegarde Heroku doit tenir dans une config var (~32 Ko
+compressés, largement assez pour un agenda personnel). `GET /api/export`
+renvoie à tout moment le snapshot en JSON si tu veux une copie manuelle.
 
 > Nécessite un compte Heroku (les dynos sont payants, il n'y a plus d'offre
 > gratuite chez Heroku).
@@ -102,6 +111,8 @@ Puis ouvrir <http://localhost:5173>. Le dev server proxifie `/api` vers le backe
 | --- | --- | --- |
 | `GET` | `/api/events?from=&to=&q=` | Liste des événements (bornes ISO 8601 et recherche titre optionnelles, récurrences développées) |
 | `GET` | `/api/export` | Snapshot JSON des 3 derniers mois (celui sauvegardé entre dynos) |
+| `GET` | `/api/state` | Snapshot + réglages (la copie que garde l'appareil) |
+| `POST` | `/api/import` | Restaure une copie appareil (réglages puis événements, dédupliqué) |
 | `GET` | `/api/events/{id}` | Détail d'un événement |
 | `POST` | `/api/events` | Création |
 | `PUT` | `/api/events/{id}` | Mise à jour |
