@@ -14,6 +14,10 @@ pub struct Model {
     pub end: String,
     pub all_day: bool,
     pub color: Option<String>,
+    /// "weekly" | "monthly" | "yearly" — None for one-shot events.
+    /// serde(default) keeps pre-recurrence CALENDAR_BACKUP payloads readable.
+    #[serde(default)]
+    pub recurrence: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

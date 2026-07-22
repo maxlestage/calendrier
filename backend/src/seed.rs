@@ -18,7 +18,7 @@ use serde::Deserialize;
 
 use crate::entities::event::{self, Entity as Event};
 use crate::state::three_months_ago;
-use crate::{astro, astronomy, f1, tides, tmdb};
+use crate::{astro, astronomy, f1, holidays, tides, tmdb};
 
 /// Static baseline: curated 2026 cinema releases + the 2026 F1 season as
 /// offline fallback (fireworks/astrology entries are generated instead).
@@ -36,6 +36,10 @@ pub struct SeedCandidate {
     pub start: Option<String>,
     #[serde(default)]
     pub end: Option<String>,
+    /// Force the all_day flag (multi-day spans like school vacations carry
+    /// explicit start/end but are still all-day); None → all_day iff no start
+    #[serde(default)]
+    pub all_day: Option<bool>,
 }
 
 /// Dedup key: lowercase alphanumeric title + date, so cosmetic differences
@@ -87,9 +91,13 @@ pub async fn seed(db: &DatabaseConnection) {
         candidates.extend(astronomy::eclipses(y));
         candidates.extend(astronomy::solstices_equinoxes(y));
         candidates.extend(astronomy::meteor_showers(y));
+        candidates.extend(holidays::public_holidays(y));
         if let Some(races) = f1::fetch(y).await {
             candidates.extend(races);
         }
+    }
+    if let Some(zone) = holidays::selected_zone(db).await {
+        candidates.extend(holidays::school_vacations(&zone, year).await);
     }
     candidates.extend(tmdb::fetch().await);
     match serde_json::from_str::<Vec<SeedCandidate>>(SEED_JSON) {
@@ -178,7 +186,7 @@ async fn insert_candidates(
         // Timed events carry their exact UTC instant; all-day events use
         // 08:00–20:00 UTC, which stays within the same civil day in France
         // (UTC+1/+2) whatever the season, so they land on a single grid cell.
-        let all_day = c.start.is_none();
+        let all_day = c.all_day.unwrap_or(c.start.is_none());
         let start = c.start.unwrap_or_else(|| format!("{}T08:00:00Z", c.date));
         let end = c.end.unwrap_or_else(|| format!("{}T20:00:00Z", c.date));
         if end < cutoff {

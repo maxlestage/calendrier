@@ -4,6 +4,7 @@ mod backup;
 mod entities;
 mod f1;
 mod handlers;
+mod holidays;
 mod migration;
 mod seed;
 mod settings;
@@ -85,7 +86,10 @@ async fn main() -> std::io::Result<()> {
                     .service(handlers::put_tide_spots)
                     .service(handlers::get_beach_weather)
                     .service(handlers::get_weather_cities)
-                    .service(handlers::put_weather_cities),
+                    .service(handlers::put_weather_cities)
+                    .service(handlers::get_school_zone)
+                    .service(handlers::put_school_zone)
+                    .service(handlers::calendar_ics),
             );
         if serve_static {
             let index = std::path::Path::new(&static_dir).join("index.html");

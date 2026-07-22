@@ -104,6 +104,7 @@ pub fn eclipses(year: i32) -> Vec<SeedCandidate> {
                 continue;
             }
             out.push(SeedCandidate {
+                all_day: None,
                 date: format!("{}-{:02}-{:02}", paris.year(), paris.month(), paris.day()),
                 title: kind.title().to_string(),
                 description: Some(format!(
@@ -179,6 +180,7 @@ pub fn solstices_equinoxes(year: i32) -> Vec<SeedCandidate> {
                 _ => "🌍 Solstice d'hiver",
             };
             SeedCandidate {
+                all_day: None,
                 date: format!("{}-{:02}-{:02}", paris.year(), paris.month(), paris.day()),
                 title: title.to_string(),
                 description: Some(format!(
@@ -210,6 +212,7 @@ pub fn meteor_showers(year: i32) -> Vec<SeedCandidate> {
     SHOWERS
         .iter()
         .map(|(m, d, title, desc)| SeedCandidate {
+            all_day: None,
             date: format!("{year}-{m:02}-{d:02}"),
             title: title.to_string(),
             description: Some(format!("Astronomie — {desc}")),

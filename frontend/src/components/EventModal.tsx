@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { CalendarEvent, EventPayload } from "../types";
+import type { CalendarEvent, EventPayload, Recurrence } from "../types";
 import { EVENT_COLORS } from "../types";
 import { toDateKey, toTimeKey } from "../dates";
 
@@ -24,6 +24,7 @@ export default function EventModal({ event, initialDate, onSave, onDelete, onClo
   const [endTime, setEndTime] = useState(event && !event.all_day ? toTimeKey(endDate) : "10:00");
   const [allDay, setAllDay] = useState(event?.all_day ?? false);
   const [color, setColor] = useState(event?.color ?? EVENT_COLORS[0]);
+  const [recurrence, setRecurrence] = useState<Recurrence>(event?.recurrence ?? null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -49,6 +50,7 @@ export default function EventModal({ event, initialDate, onSave, onDelete, onClo
         end: end.toISOString(),
         all_day: allDay,
         color,
+        recurrence,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -124,6 +126,24 @@ export default function EventModal({ event, initialDate, onSave, onDelete, onClo
                 <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
               </label>
             </div>
+          )}
+          <label>
+            Répétition
+            <select
+              className="tide-select"
+              value={recurrence ?? ""}
+              onChange={(e) => setRecurrence((e.target.value || null) as Recurrence)}
+            >
+              <option value="">Jamais</option>
+              <option value="weekly">Chaque semaine</option>
+              <option value="monthly">Chaque mois</option>
+              <option value="yearly">Chaque année (anniversaires…)</option>
+            </select>
+          </label>
+          {recurrence && event && (
+            <p className="muted small">
+              Modifier ou supprimer agit sur toute la série.
+            </p>
           )}
           <div className="color-picker">
             {EVENT_COLORS.map((c) => (
