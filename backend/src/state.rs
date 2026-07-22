@@ -24,8 +24,14 @@ impl Snapshot {
     }
 
     pub async fn refresh(&self, db: &DatabaseConnection) {
+        // Recurring events are kept whatever their base date: their
+        // occurrences extend into the present even when the base is old.
         match Event::find()
-            .filter(event::Column::End.gte(three_months_ago()))
+            .filter(
+                sea_orm::Condition::any()
+                    .add(event::Column::End.gte(three_months_ago()))
+                    .add(event::Column::Recurrence.is_not_null()),
+            )
             .order_by_asc(event::Column::Start)
             .all(db)
             .await

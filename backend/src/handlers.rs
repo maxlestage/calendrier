@@ -16,6 +16,18 @@ pub struct EventPayload {
     #[serde(default)]
     pub all_day: bool,
     pub color: Option<String>,
+    /// "weekly" | "monthly" | "yearly" — omitted/null for one-shot events
+    #[serde(default)]
+    pub recurrence: Option<String>,
+}
+
+fn normalize_recurrence(r: Option<String>) -> Result<Option<String>, HttpResponse> {
+    match r.as_deref().map(str::trim) {
+        None | Some("") => Ok(None),
+        Some(v @ ("weekly" | "monthly" | "yearly")) => Ok(Some(v.to_string())),
+        Some(other) => Err(HttpResponse::BadRequest()
+            .json(serde_json::json!({ "error": format!("récurrence inconnue : {other}") }))),
+    }
 }
 
 #[derive(Deserialize)]
@@ -24,6 +36,67 @@ pub struct RangeQuery {
     pub from: Option<String>,
     /// ISO 8601 upper bound (exclusive) on event start
     pub to: Option<String>,
+    /// Title search (substring, case-insensitive for ASCII)
+    pub q: Option<String>,
+}
+
+fn parse_iso(s: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    chrono::DateTime::parse_from_rfc3339(&s.replace('Z', "+00:00"))
+        .ok()
+        .map(|d| d.with_timezone(&chrono::Utc))
+}
+
+/// Expand a recurring event into its occurrences overlapping [from, to).
+/// Occurrences reuse the base event's id: editing/deleting one edits the
+/// whole series.
+fn expand_recurring(
+    ev: &event::Model,
+    from: Option<&str>,
+    to: Option<&str>,
+) -> Vec<event::Model> {
+    let Some(rule) = ev.recurrence.as_deref() else {
+        return vec![ev.clone()];
+    };
+    let (Some(base_start), Some(base_end)) = (parse_iso(&ev.start), parse_iso(&ev.end)) else {
+        return vec![ev.clone()];
+    };
+    let now = chrono::Utc::now();
+    let win_from = from
+        .and_then(parse_iso)
+        .unwrap_or_else(|| now - chrono::Duration::days(90));
+    let win_to = to
+        .and_then(parse_iso)
+        .unwrap_or_else(|| now + chrono::Duration::days(400));
+    let duration = base_end - base_start;
+    let fmt = |d: chrono::DateTime<chrono::Utc>| d.format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let mut out = Vec::new();
+    // Occurrence n is computed from the base each time (no cumulative
+    // drift; monthly clamps the 31st to shorter months' last day).
+    for n in 0..600u32 {
+        let start = match rule {
+            "weekly" => base_start + chrono::Duration::weeks(n as i64),
+            "monthly" => match base_start.checked_add_months(chrono::Months::new(n)) {
+                Some(d) => d,
+                None => break,
+            },
+            "yearly" => match base_start.checked_add_months(chrono::Months::new(12 * n)) {
+                Some(d) => d,
+                None => break,
+            },
+            _ => return vec![ev.clone()],
+        };
+        if start >= win_to {
+            break;
+        }
+        let end = start + duration;
+        if end >= win_from {
+            let mut occ = ev.clone();
+            occ.start = fmt(start);
+            occ.end = fmt(end);
+            out.push(occ);
+        }
+    }
+    out
 }
 
 #[get("/events")]
@@ -31,19 +104,47 @@ pub async fn list_events(
     db: web::Data<DatabaseConnection>,
     query: web::Query<RangeQuery>,
 ) -> impl Responder {
-    let mut select = Event::find().order_by_asc(event::Column::Start);
-    // ISO 8601 UTC strings compare lexicographically in chronological order,
-    // so string comparison is a valid range filter here.
+    // One-shot events: plain range query. ISO 8601 UTC strings compare
+    // lexicographically in chronological order, so string comparison is a
+    // valid range filter here.
+    let mut select = Event::find()
+        .filter(event::Column::Recurrence.is_null())
+        .order_by_asc(event::Column::Start);
     if let Some(from) = &query.from {
         select = select.filter(event::Column::End.gte(from.clone()));
     }
     if let Some(to) = &query.to {
         select = select.filter(event::Column::Start.lt(to.clone()));
     }
-    match select.all(db.get_ref()).await {
-        Ok(events) => HttpResponse::Ok().json(events),
-        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({ "error": e.to_string() })),
+    if let Some(q) = &query.q {
+        select = select.filter(event::Column::Title.contains(q.clone()));
     }
+    let mut events = match select.all(db.get_ref()).await {
+        Ok(events) => events,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .json(serde_json::json!({ "error": e.to_string() }))
+        }
+    };
+    // Recurring events: fetched without a range (their base may be long
+    // before the window) and expanded into occurrences.
+    let mut recurring = Event::find().filter(event::Column::Recurrence.is_not_null());
+    if let Some(q) = &query.q {
+        recurring = recurring.filter(event::Column::Title.contains(q.clone()));
+    }
+    match recurring.all(db.get_ref()).await {
+        Ok(list) => {
+            for ev in &list {
+                events.extend(expand_recurring(ev, query.from.as_deref(), query.to.as_deref()));
+            }
+        }
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .json(serde_json::json!({ "error": e.to_string() }))
+        }
+    }
+    events.sort_by(|a, b| a.start.cmp(&b.start));
+    HttpResponse::Ok().json(events)
 }
 
 #[get("/events/{id}")]
@@ -62,6 +163,10 @@ pub async fn create_event(
     payload: web::Json<EventPayload>,
 ) -> impl Responder {
     let payload = payload.into_inner();
+    let recurrence = match normalize_recurrence(payload.recurrence) {
+        Ok(r) => r,
+        Err(resp) => return resp,
+    };
     let active = event::ActiveModel {
         title: Set(payload.title),
         description: Set(payload.description),
@@ -69,6 +174,7 @@ pub async fn create_event(
         end: Set(payload.end),
         all_day: Set(payload.all_day),
         color: Set(payload.color),
+        recurrence: Set(recurrence),
         ..Default::default()
     };
     match active.insert(db.get_ref()).await {
@@ -99,6 +205,10 @@ pub async fn update_event(
         }
     };
     let payload = payload.into_inner();
+    let recurrence = match normalize_recurrence(payload.recurrence) {
+        Ok(r) => r,
+        Err(resp) => return resp,
+    };
     let mut active: event::ActiveModel = existing.into();
     active.title = Set(payload.title);
     active.description = Set(payload.description);
@@ -106,6 +216,7 @@ pub async fn update_event(
     active.end = Set(payload.end);
     active.all_day = Set(payload.all_day);
     active.color = Set(payload.color);
+    active.recurrence = Set(recurrence);
     match active.update(db.get_ref()).await {
         Ok(ev) => {
             snap.refresh(db.get_ref()).await;
@@ -211,6 +322,155 @@ pub async fn put_weather_cities(
     // No events to add/remove: weather is served live and the cache key
     // (selected place keys) changes with the selection.
     HttpResponse::Ok().json(weather_cities_response(db.get_ref()).await)
+}
+
+// ---------------------------------------------------------------------------
+// School zone (vacances scolaires A/B/C)
+
+#[derive(Deserialize)]
+pub struct SchoolZonePayload {
+    pub zone: String,
+}
+
+#[get("/school-zone")]
+pub async fn get_school_zone(db: web::Data<DatabaseConnection>) -> impl Responder {
+    let zone = crate::holidays::selected_zone(db.get_ref()).await.unwrap_or_default();
+    HttpResponse::Ok().json(serde_json::json!({ "zone": zone }))
+}
+
+#[put("/school-zone")]
+pub async fn put_school_zone(
+    db: web::Data<DatabaseConnection>,
+    snap: web::Data<Snapshot>,
+    payload: web::Json<SchoolZonePayload>,
+) -> impl Responder {
+    let zone = payload.into_inner().zone.trim().to_lowercase();
+    if !zone.is_empty() && !["a", "b", "c"].contains(&zone.as_str()) {
+        return HttpResponse::BadRequest()
+            .json(serde_json::json!({ "error": format!("zone inconnue : {zone}") }));
+    }
+    let old = crate::holidays::selected_zone(db.get_ref()).await.unwrap_or_default();
+    if let Err(e) =
+        crate::settings::set(db.get_ref(), crate::holidays::ZONE_SETTING, &zone).await
+    {
+        return HttpResponse::InternalServerError()
+            .json(serde_json::json!({ "error": e.to_string() }));
+    }
+    if old != zone {
+        // Vacation events belong to the previous zone: drop them
+        let res = Event::delete_many()
+            .filter(event::Column::Color.eq(crate::holidays::HOLIDAY_COLOR))
+            .filter(event::Column::Title.starts_with("🎒"))
+            .exec(db.get_ref())
+            .await;
+        if let Err(e) = res {
+            log::warn!("could not delete school vacation events: {e}");
+        }
+        if !zone.is_empty() {
+            let year = chrono::Utc::now()
+                .with_timezone(&chrono_tz::Europe::Paris)
+                .format("%Y")
+                .to_string()
+                .parse()
+                .unwrap_or(2026);
+            let candidates = crate::holidays::school_vacations(&zone, year).await;
+            let inserted = crate::seed::insert_new_events(db.get_ref(), candidates).await;
+            log::info!("school zone change: {inserted} vacation events inserted");
+        }
+        snap.refresh(db.get_ref()).await;
+    }
+    let current = crate::holidays::selected_zone(db.get_ref()).await.unwrap_or_default();
+    HttpResponse::Ok().json(serde_json::json!({ "zone": current }))
+}
+
+// ---------------------------------------------------------------------------
+// ICS feed — subscribe from the native iOS/Android/desktop calendar
+
+fn ics_escape(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace(';', "\\;")
+        .replace(',', "\\,")
+        .replace('\n', "\\n")
+        .replace('\r', "")
+}
+
+/// Paris civil day of an ISO UTC instant, compact ICS form (YYYYMMDD).
+fn ics_paris_date(iso: &str, plus_days: i64) -> Option<String> {
+    let dt = parse_iso(iso)?;
+    Some(
+        (dt.with_timezone(&chrono_tz::Europe::Paris).date_naive()
+            + chrono::Duration::days(plus_days))
+        .format("%Y%m%d")
+        .to_string(),
+    )
+}
+
+/// The whole calendar as an iCalendar feed. Subscribing to
+/// `/api/calendar.ics` from the iPhone's native Calendar (Réglages →
+/// Apps → Calendrier → Comptes → Autre → Ajouter un cal. avec abonnement)
+/// mirrors every event — tides included — with native notifications.
+#[get("/calendar.ics")]
+pub async fn calendar_ics(db: web::Data<DatabaseConnection>) -> impl Responder {
+    let events = match Event::find()
+        .order_by_asc(event::Column::Start)
+        .all(db.get_ref())
+        .await
+    {
+        Ok(evs) => evs,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .json(serde_json::json!({ "error": e.to_string() }))
+        }
+    };
+    let stamp = chrono::Utc::now().format("%Y%m%dT%H%M%SZ").to_string();
+    let mut ics = String::from(
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Calendrier//FR\r\n\
+         CALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:Calendrier\r\n\
+         X-WR-TIMEZONE:Europe/Paris\r\n",
+    );
+    for ev in &events {
+        let compact =
+            |iso: &str| iso.replace(['-', ':'], "");
+        ics.push_str("BEGIN:VEVENT\r\n");
+        ics.push_str(&format!("UID:{}@calendrier\r\n", ev.id));
+        ics.push_str(&format!("DTSTAMP:{stamp}\r\n"));
+        if ev.all_day {
+            let (Some(d0), Some(d1)) = (
+                ics_paris_date(&ev.start, 0),
+                ics_paris_date(&ev.end, 1),
+            ) else {
+                ics.push_str("END:VEVENT\r\n");
+                continue;
+            };
+            ics.push_str(&format!("DTSTART;VALUE=DATE:{d0}\r\n"));
+            ics.push_str(&format!("DTEND;VALUE=DATE:{d1}\r\n"));
+        } else {
+            ics.push_str(&format!("DTSTART:{}\r\n", compact(&ev.start)));
+            ics.push_str(&format!("DTEND:{}\r\n", compact(&ev.end)));
+        }
+        if let Some(rule) = ev.recurrence.as_deref() {
+            let freq = match rule {
+                "weekly" => "WEEKLY",
+                "monthly" => "MONTHLY",
+                "yearly" => "YEARLY",
+                _ => "",
+            };
+            if !freq.is_empty() {
+                ics.push_str(&format!("RRULE:FREQ={freq}\r\n"));
+            }
+        }
+        ics.push_str(&format!("SUMMARY:{}\r\n", ics_escape(&ev.title)));
+        if let Some(desc) = ev.description.as_deref() {
+            if !desc.is_empty() {
+                ics.push_str(&format!("DESCRIPTION:{}\r\n", ics_escape(desc)));
+            }
+        }
+        ics.push_str("END:VEVENT\r\n");
+    }
+    ics.push_str("END:VCALENDAR\r\n");
+    HttpResponse::Ok()
+        .content_type("text/calendar; charset=utf-8")
+        .body(ics)
 }
 
 // ---------------------------------------------------------------------------

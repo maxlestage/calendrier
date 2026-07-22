@@ -239,6 +239,7 @@ fn tide_candidate(
         .format("%Y-%m-%dT%H:%M:%SZ")
         .to_string();
     SeedCandidate {
+        all_day: None,
         date: instant.format("%Y-%m-%d").to_string(),
         title: format!(
             "🌊 {} — {}",

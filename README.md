@@ -53,11 +53,17 @@ Pour des déploiements continus ensuite : dashboard Heroku → l'app → onglet
   - 🌊 **Marées** (bleu mer) : pleines et basses mers avec heures et hauteurs, via l'[API WorldTides](https://www.worldtides.info) (prédictions officielles SHOM/FES). **L'utilisateur choisit ses plages dans l'app** : bouton 🌊 → listes déroulantes par côte, avec **toutes les plages** au catalogue (~26 plages de l'océan Atlantique de Carnac à Hendaye, ~29 plages de la Méditerranée d'Argelès à Porto-Vecchio, + Manche et ports de référence). Le choix est **persisté en base** (`GET/PUT /api/tide-spots`) : sélectionner une plage récupère ses marées immédiatement, la retirer supprime ses événements. Marnage méditerranéen faible (~20-40 cm) : le vent/la pression comptent souvent plus que la marée. **Aucune clé requise** : par défaut les marées sont déduites de la courbe de hauteur d'eau horaire d'[Open-Meteo](https://open-meteo.com) (modèle de marée hydrodynamique, gratuit, sans clé) — extremums affinés par interpolation, précision de l'ordre de quelques minutes, source indiquée dans la description de l'événement. Si la config var `WORLDTIDES_API_KEY` est présente, l'app utilise à la place les extremums officiels WorldTides (SHOM/FES). Un modèle « maison » (ajustement harmonique) a été écarté à dessein : des horaires de marée faux sont dangereux (baïnes, pêche à pied, estran) — les deux sources s'appuient sur de vrais modèles de marée. `TIDE_PORTS` (spots ou groupes `ocean`/`mer`/`manche`/`ports`) reste un repli si aucun choix n'a été fait dans l'app ; `TIDE_DAYS` : horizon en jours (défaut 14) ; l'appel API n'est fait que lorsque l'horizon stocké d'un spot devient court
   - Dédup au démarrage par jour civil de Paris (pas de doublons entre redémarrages) ; les dates plus vieilles que 3 mois ne sont pas réinsérées ; un événement pré-chargé supprimé peut réapparaître au redémarrage suivant. `SEED_DISABLED=1` désactive tout
 
+- 🎒 **Jours fériés et vacances scolaires** : les 11 fériés français calculés chaque année (Pâques par l'algorithme grégorien, testé), et les vacances scolaires de **ta zone (A/B/C, choisie dans le sélecteur 🌊)** via l'API open-data officielle de l'Éducation nationale (gratuite, sans clé) — périodes affichées en vert sur toute leur durée (`GET/PUT /api/school-zone`)
 - 🏖️ **Météo des plages et des villes** : pour les plages sélectionnées (les mêmes que les marées) **et les villes de France choisies** (~45 grandes villes au catalogue, listes déroulantes dans le même sélecteur 🌊), une carte météo par lieu s'affiche en tête de l'agenda du jour — temps (soleil/nuages/pluie/orage), températures max/min, vent, indice UV, probabilité de pluie, et pour les plages **hauteur de vagues et température de l'eau** (API marine). Prévisions à 7 jours via [Open-Meteo](https://open-meteo.com) (**gratuit, sans clé — rien à configurer**), servies en direct par `GET /api/beach-weather` avec un cache mémoire de 30 min ; la météo n'est pas stockée en événements car elle change en permanence. Sélection de villes persistée en base (`GET/PUT /api/weather-cities`)
+La carte météo de chaque lieu affiche aussi **lever/coucher du soleil** 🌅🌇 et une **alerte pollen** 🤧 (modéré/fort, API qualité de l'air Open-Meteo) ; la **grille du mois** montre l'emoji du temps sous chacun des 7 prochains jours (premier lieu sélectionné).
+
 - Vue mensuelle (semaine commençant le lundi), navigation mois précédent/suivant, bouton « Aujourd'hui »
+- 🔍 **Recherche** d'événements par titre (bouton loupe) — taper sur un résultat navigue vers son jour
+- 🔁 **Événements récurrents** : répétition chaque semaine, chaque mois ou chaque année (anniversaires…) ; le 31 du mois est ramené au dernier jour des mois plus courts ; modifier/supprimer agit sur toute la série
+- 📲 **Abonnement depuis le Calendrier iPhone/Android** : flux iCalendar sur `GET /api/calendar.ics` (récurrences en RRULE). Sur iOS : Réglages → Apps → Calendrier → Comptes → Ajouter un compte → Autre → **Ajouter un cal. avec abonnement** → `https://<ton-app>.herokuapp.com/api/calendar.ics` — tous les événements (marées comprises) apparaissent dans le calendrier natif, avec ses vraies notifications
 - Création d'un événement en cliquant sur un jour ou via le bouton « + Événement »
 - Édition et suppression en cliquant sur un événement
-- Titre, description, date, heures de début/fin, journée entière, couleur
+- Titre, description, date, heures de début/fin, journée entière, couleur, répétition
 - Persistance en SQLite via SeaORM (migrations exécutées automatiquement au démarrage)
 
 ## Démarrage
@@ -92,7 +98,7 @@ Puis ouvrir <http://localhost:5173>. Le dev server proxifie `/api` vers le backe
 
 | Méthode | Route | Description |
 | --- | --- | --- |
-| `GET` | `/api/events?from=&to=` | Liste des événements (bornes ISO 8601 optionnelles) |
+| `GET` | `/api/events?from=&to=&q=` | Liste des événements (bornes ISO 8601 et recherche titre optionnelles, récurrences développées) |
 | `GET` | `/api/export` | Snapshot JSON des 3 derniers mois (celui sauvegardé entre dynos) |
 | `GET` | `/api/events/{id}` | Détail d'un événement |
 | `POST` | `/api/events` | Création |
@@ -103,6 +109,9 @@ Puis ouvrir <http://localhost:5173>. Le dev server proxifie `/api` vers le backe
 | `GET` | `/api/beach-weather` | Météo 7 jours des plages **et villes** sélectionnées (Open-Meteo, cache 30 min) |
 | `GET` | `/api/weather-cities` | Catalogue des villes + sélection courante |
 | `PUT` | `/api/weather-cities` | Enregistre la sélection de villes (`{"cities": [...]}`) |
+| `GET` | `/api/school-zone` | Zone de vacances scolaires courante |
+| `PUT` | `/api/school-zone` | Enregistre la zone (`{"zone": "a"}`, vide pour désactiver) |
+| `GET` | `/api/calendar.ics` | Flux iCalendar (abonnement calendrier natif) |
 
 Corps JSON pour `POST`/`PUT` :
 
@@ -113,7 +122,8 @@ Corps JSON pour `POST`/`PUT` :
   "start": "2026-07-16T09:00:00Z",
   "end": "2026-07-16T10:00:00Z",
   "all_day": false,
-  "color": "#4f6bed"
+  "color": "#4f6bed",
+  "recurrence": "weekly"
 }
 ```
 

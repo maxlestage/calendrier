@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import CalendarGrid from "./components/CalendarGrid";
 import DayAgenda from "./components/DayAgenda";
 import EventModal from "./components/EventModal";
+import SearchModal from "./components/SearchModal";
 import TideSpotsModal from "./components/TideSpotsModal";
 import { createEvent, deleteEvent, fetchBeachWeather, fetchEvents, updateEvent } from "./api";
 import { eventCoversDay, MONTH_NAMES, monthGridDays } from "./dates";
@@ -21,6 +22,7 @@ export default function App() {
   const [weather, setWeather] = useState<BeachWeather[]>([]);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [tideModal, setTideModal] = useState(false);
+  const [searchModal, setSearchModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Bounds of the visible grid (6 weeks), not just the month
@@ -109,6 +111,13 @@ export default function App() {
           </button>
           <button
             className="nav-btn"
+            onClick={() => setSearchModal(true)}
+            aria-label="Rechercher un événement"
+          >
+            🔍
+          </button>
+          <button
+            className="nav-btn"
             onClick={() => setTideModal(true)}
             aria-label="Choisir plages (marées) et villes (météo)"
           >
@@ -121,6 +130,7 @@ export default function App() {
         year={year}
         month={month}
         events={events}
+        weather={weather}
         selectedDay={selectedDay}
         onSelectDay={selectDay}
       />
@@ -145,6 +155,15 @@ export default function App() {
           onSave={save}
           onDelete={remove}
           onClose={() => setModal(null)}
+        />
+      )}
+      {searchModal && (
+        <SearchModal
+          onPick={(day) => {
+            setSearchModal(false);
+            selectDay(day);
+          }}
+          onClose={() => setSearchModal(false)}
         />
       )}
       {tideModal && (

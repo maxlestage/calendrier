@@ -147,6 +147,7 @@ pub async fn fetch(year: i32) -> Option<Vec<SeedCandidate>> {
             None => (None, None),
         };
         events.push(SeedCandidate {
+            all_day: None,
             date: r.date.clone(),
             title: format!("🏎️ {name}"),
             description: Some(format!(
@@ -185,6 +186,7 @@ pub async fn fetch(year: i32) -> Option<Vec<SeedCandidate>> {
                 None => (None, None),
             };
             events.push(SeedCandidate {
+                all_day: None,
                 date: session.date,
                 title,
                 description: Some(description),
