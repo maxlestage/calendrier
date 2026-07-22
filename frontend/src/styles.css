@@ -66,6 +66,11 @@ button {
   background: #eef0f6;
 }
 
+.nav-group {
+  display: flex;
+  gap: 8px;
+}
+
 .month-label {
   border: none;
   background: none;
@@ -435,6 +440,67 @@ button {
 
 .spacer {
   flex: 1;
+}
+
+/* ---------- Tide spots picker ---------- */
+
+.tide-group {
+  margin-bottom: 16px;
+}
+
+.tide-group h3 {
+  font-size: 0.9rem;
+  margin: 0 0 6px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.78rem;
+  margin: 0 0 6px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #e3f0fb;
+  color: #0b4f8a;
+  border-radius: 999px;
+  padding: 5px 6px 5px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.chip-x {
+  border: none;
+  background: rgba(11, 79, 138, 0.12);
+  color: inherit;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.tide-select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: #fff;
+  color: var(--text);
 }
 
 /* ---------- Larger screens ---------- */

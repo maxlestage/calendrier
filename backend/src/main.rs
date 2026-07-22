@@ -6,6 +6,7 @@ mod f1;
 mod handlers;
 mod migration;
 mod seed;
+mod settings;
 mod state;
 mod tides;
 mod tmdb;
@@ -75,7 +76,9 @@ async fn main() -> std::io::Result<()> {
                     .service(handlers::create_event)
                     .service(handlers::update_event)
                     .service(handlers::delete_event)
-                    .service(handlers::export_events),
+                    .service(handlers::export_events)
+                    .service(handlers::get_tide_spots)
+                    .service(handlers::put_tide_spots),
             );
         if serve_static {
             let index = std::path::Path::new(&static_dir).join("index.html");
