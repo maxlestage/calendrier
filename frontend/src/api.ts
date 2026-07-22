@@ -1,4 +1,4 @@
-import type { CalendarEvent, EventPayload, TideSpot } from "./types";
+import type { BeachWeather, CalendarEvent, EventPayload, TideSpot } from "./types";
 
 const BASE = "/api";
 
@@ -44,6 +44,12 @@ export function deleteEvent(id: number): Promise<void> {
 
 export function fetchTideSpots(): Promise<TideSpot[]> {
   return fetch(`${BASE}/tide-spots`).then((res) => handle<TideSpot[]>(res));
+}
+
+export function fetchBeachWeather(): Promise<BeachWeather[]> {
+  return fetch(`${BASE}/beach-weather`)
+    .then((res) => handle<{ spots: BeachWeather[] }>(res))
+    .then((body) => body.spots);
 }
 
 export function saveTideSpots(spots: string[]): Promise<TideSpot[]> {

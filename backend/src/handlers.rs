@@ -137,6 +137,17 @@ pub async fn export_events(snap: web::Data<Snapshot>) -> impl Responder {
     HttpResponse::Ok().json(snap.events())
 }
 
+/// Beach weather for the selected tide spots (Open-Meteo, cached ~30 min).
+#[get("/beach-weather")]
+pub async fn get_beach_weather(
+    db: web::Data<DatabaseConnection>,
+    cache: web::Data<crate::weather::WeatherCache>,
+) -> impl Responder {
+    let ports = crate::tides::selected_ports(db.get_ref()).await;
+    let spots = crate::weather::for_ports(cache.get_ref(), &ports).await;
+    HttpResponse::Ok().json(serde_json::json!({ "spots": spots }))
+}
+
 // ---------------------------------------------------------------------------
 // Tide spots: catalog + user selection (the in-app dropdown)
 

@@ -53,6 +53,7 @@ Pour des déploiements continus ensuite : dashboard Heroku → l'app → onglet
   - 🌊 **Marées** (bleu mer) : pleines et basses mers avec heures et hauteurs, via l'[API WorldTides](https://www.worldtides.info) (prédictions officielles SHOM/FES). **L'utilisateur choisit ses plages dans l'app** : bouton 🌊 → listes déroulantes par côte, avec **toutes les plages** au catalogue (~26 plages de l'océan Atlantique de Carnac à Hendaye, ~29 plages de la Méditerranée d'Argelès à Porto-Vecchio, + Manche et ports de référence). Le choix est **persisté en base** (`GET/PUT /api/tide-spots`) : sélectionner une plage récupère ses marées immédiatement, la retirer supprime ses événements. Marnage méditerranéen faible (~20-40 cm) : le vent/la pression comptent souvent plus que la marée. **Activation par clé** : config var `WORLDTIDES_API_KEY` — sans clé, pas de marées. Un modèle « maison » a été écarté à dessein : des horaires de marée faux sont dangereux (baïnes, pêche à pied, estran). `TIDE_PORTS` (spots ou groupes `ocean`/`mer`/`manche`/`ports`) reste un repli si aucun choix n'a été fait dans l'app ; `TIDE_DAYS` : horizon en jours (défaut 14) ; l'appel API n'est fait que lorsque l'horizon stocké d'un spot devient court
   - Dédup au démarrage par jour civil de Paris (pas de doublons entre redémarrages) ; les dates plus vieilles que 3 mois ne sont pas réinsérées ; un événement pré-chargé supprimé peut réapparaître au redémarrage suivant. `SEED_DISABLED=1` désactive tout
 
+- 🏖️ **Météo des plages** : pour les plages sélectionnées (les mêmes que les marées), une carte météo par plage s'affiche en tête de l'agenda du jour — temps (soleil/nuages/pluie/orage), températures max/min, vent, indice UV, probabilité de pluie, **hauteur de vagues et température de l'eau** (API marine). Prévisions à 7 jours via [Open-Meteo](https://open-meteo.com) (**gratuit, sans clé — rien à configurer**), servies en direct par `GET /api/beach-weather` avec un cache mémoire de 30 min ; la météo n'est pas stockée en événements car elle change en permanence
 - Vue mensuelle (semaine commençant le lundi), navigation mois précédent/suivant, bouton « Aujourd'hui »
 - Création d'un événement en cliquant sur un jour ou via le bouton « + Événement »
 - Édition et suppression en cliquant sur un événement
@@ -97,6 +98,9 @@ Puis ouvrir <http://localhost:5173>. Le dev server proxifie `/api` vers le backe
 | `POST` | `/api/events` | Création |
 | `PUT` | `/api/events/{id}` | Mise à jour |
 | `DELETE` | `/api/events/{id}` | Suppression |
+| `GET` | `/api/tide-spots` | Catalogue des plages + sélection courante |
+| `PUT` | `/api/tide-spots` | Enregistre la sélection de plages (`{"spots": [...]}`) |
+| `GET` | `/api/beach-weather` | Météo 7 jours des plages sélectionnées (Open-Meteo, cache 30 min) |
 
 Corps JSON pour `POST`/`PUT` :
 
