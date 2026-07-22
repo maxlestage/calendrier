@@ -1,8 +1,9 @@
-//! Persistence of the last three months of events across dyno restarts.
+//! Persistence of the last three months of events AND the settings table
+//! (selected beaches/cities…) across dyno restarts.
 //!
 //! Heroku dynos have an ephemeral filesystem, so the SQLite file is wiped on
-//! every restart. To survive that without an external database, the event
-//! snapshot is written (gzip + base64 JSON) to the `CALENDAR_BACKUP` config
+//! every restart. To survive that without an external database, the backup
+//! payload is written (gzip + base64 JSON) to the `CALENDAR_BACKUP` config
 //! var via the Heroku Platform API when the process shuts down (Heroku sends
 //! SIGTERM before replacing a dyno), and read back from the environment when
 //! an empty database boots.
@@ -11,23 +12,34 @@ use std::io::{Read, Write};
 
 use base64::Engine;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, PaginatorTrait, Set};
+use serde::{Deserialize, Serialize};
 
 use crate::entities::event::{self, Entity as Event};
+use crate::entities::setting;
 use crate::state::three_months_ago;
 
 const BACKUP_VAR: &str = "CALENDAR_BACKUP";
 /// Heroku limits the combined size of config vars (32 KB order of magnitude).
 const PAYLOAD_WARN_BYTES: usize = 30_000;
 
-pub fn encode(events: &[event::Model]) -> Result<String, String> {
-    let json = serde_json::to_vec(events).map_err(|e| e.to_string())?;
+#[derive(Serialize, Deserialize)]
+pub struct Backup {
+    pub events: Vec<event::Model>,
+    /// Settings (selected tide spots, weather cities…) — absent in payloads
+    /// written before this field existed.
+    #[serde(default)]
+    pub settings: Vec<setting::Model>,
+}
+
+pub fn encode(backup: &Backup) -> Result<String, String> {
+    let json = serde_json::to_vec(backup).map_err(|e| e.to_string())?;
     let mut enc = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
     enc.write_all(&json).map_err(|e| e.to_string())?;
     let gz = enc.finish().map_err(|e| e.to_string())?;
     Ok(base64::engine::general_purpose::STANDARD.encode(gz))
 }
 
-pub fn decode(payload: &str) -> Result<Vec<event::Model>, String> {
+pub fn decode(payload: &str) -> Result<Backup, String> {
     let gz = base64::engine::general_purpose::STANDARD
         .decode(payload.trim())
         .map_err(|e| e.to_string())?;
@@ -35,7 +47,13 @@ pub fn decode(payload: &str) -> Result<Vec<event::Model>, String> {
     flate2::read::GzDecoder::new(&gz[..])
         .read_to_end(&mut json)
         .map_err(|e| e.to_string())?;
-    serde_json::from_slice(&json).map_err(|e| e.to_string())
+    // Current format first, then the legacy bare event list
+    if let Ok(backup) = serde_json::from_slice::<Backup>(&json) {
+        return Ok(backup);
+    }
+    serde_json::from_slice::<Vec<event::Model>>(&json)
+        .map(|events| Backup { events, settings: Vec::new() })
+        .map_err(|e| e.to_string())
 }
 
 /// Seed an empty database from the `CALENDAR_BACKUP` env var (set by the
@@ -60,17 +78,28 @@ pub async fn restore_from_env(db: &DatabaseConnection) {
             return;
         }
     }
-    let events = match decode(&payload) {
-        Ok(events) => events,
+    let backup = match decode(&payload) {
+        Ok(b) => b,
         Err(e) => {
             log::warn!("could not decode {BACKUP_VAR}, skipping restore: {e}");
             return;
         }
     };
+    // Settings first: the seed that runs right after restore needs the
+    // selected beaches/cities to fetch tides and school vacations.
+    let mut settings_restored = 0usize;
+    for s in &backup.settings {
+        match crate::settings::set(db, &s.key, &s.value).await {
+            Ok(()) => settings_restored += 1,
+            Err(e) => log::warn!("failed to restore setting {}: {e}", s.key),
+        }
+    }
     let cutoff = three_months_ago();
     let mut restored = 0usize;
-    for ev in events {
-        if ev.end < cutoff {
+    for ev in backup.events {
+        // Recurring events are kept whatever their age: their occurrences
+        // extend into the present.
+        if ev.end < cutoff && ev.recurrence.is_none() {
             continue;
         }
         let active = event::ActiveModel {
@@ -80,6 +109,7 @@ pub async fn restore_from_env(db: &DatabaseConnection) {
             end: Set(ev.end),
             all_day: Set(ev.all_day),
             color: Set(ev.color),
+            recurrence: Set(ev.recurrence),
             ..Default::default()
         };
         match active.insert(db).await {
@@ -87,14 +117,16 @@ pub async fn restore_from_env(db: &DatabaseConnection) {
             Err(e) => log::warn!("failed to restore an event: {e}"),
         }
     }
-    log::info!("restored {restored} events from {BACKUP_VAR}");
+    log::info!(
+        "restored {restored} events and {settings_restored} settings from {BACKUP_VAR}"
+    );
 }
 
 /// Write the snapshot to the app's `CALENDAR_BACKUP` config var through the
 /// Heroku Platform API. Requires HEROKU_API_KEY and HEROKU_APP_NAME. Note:
 /// changing a config var restarts the dyno, which is why this only runs at
 /// shutdown, when the dyno is going away anyway.
-pub async fn push_to_heroku(events: &[event::Model]) {
+pub async fn push_to_heroku(db: &DatabaseConnection, events: &[event::Model]) {
     let (Ok(key), Ok(app)) = (
         std::env::var("HEROKU_API_KEY"),
         std::env::var("HEROKU_APP_NAME"),
@@ -104,7 +136,12 @@ pub async fn push_to_heroku(events: &[event::Model]) {
     };
     let api =
         std::env::var("HEROKU_API_URL").unwrap_or_else(|_| "https://api.heroku.com".into());
-    let payload = match encode(events) {
+    let settings = setting::Entity::find().all(db).await.unwrap_or_default();
+    let backup = Backup {
+        events: events.to_vec(),
+        settings,
+    };
+    let payload = match encode(&backup) {
         Ok(p) => p,
         Err(e) => {
             log::error!("could not encode backup: {e}");
@@ -136,7 +173,11 @@ pub async fn push_to_heroku(events: &[event::Model]) {
         .await;
     match res {
         Ok(r) if r.status().is_success() => {
-            log::info!("backed up {} events to Heroku config var", events.len())
+            log::info!(
+                "backed up {} events and {} settings to Heroku config var",
+                backup.events.len(),
+                backup.settings.len()
+            )
         }
         Ok(r) => log::error!(
             "Heroku API returned {}: {}",
