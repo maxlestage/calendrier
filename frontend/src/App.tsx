@@ -3,9 +3,9 @@ import CalendarGrid from "./components/CalendarGrid";
 import DayAgenda from "./components/DayAgenda";
 import EventModal from "./components/EventModal";
 import TideSpotsModal from "./components/TideSpotsModal";
-import { createEvent, deleteEvent, fetchEvents, updateEvent } from "./api";
+import { createEvent, deleteEvent, fetchBeachWeather, fetchEvents, updateEvent } from "./api";
 import { eventCoversDay, MONTH_NAMES, monthGridDays } from "./dates";
-import type { CalendarEvent, EventPayload } from "./types";
+import type { BeachWeather, CalendarEvent, EventPayload } from "./types";
 
 interface ModalState {
   event: CalendarEvent | null;
@@ -18,6 +18,7 @@ export default function App() {
   const [month, setMonth] = useState(now.getMonth());
   const [selectedDay, setSelectedDay] = useState<Date>(now);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [weather, setWeather] = useState<BeachWeather[]>([]);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [tideModal, setTideModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +42,15 @@ export default function App() {
   }, [from, to]);
 
   useEffect(reload, [reload]);
+
+  // Beach weather for the selected spots (best-effort: silent on failure)
+  const reloadWeather = useCallback(() => {
+    fetchBeachWeather()
+      .then(setWeather)
+      .catch(() => setWeather([]));
+  }, []);
+
+  useEffect(reloadWeather, [reloadWeather]);
 
   const shiftMonth = (delta: number) => {
     const d = new Date(year, month + delta, 1);
@@ -117,6 +127,7 @@ export default function App() {
       <DayAgenda
         day={selectedDay}
         events={dayEvents}
+        weather={weather}
         onEventClick={(event) => setModal({ event, initialDate: new Date(event.start) })}
         onAdd={() => setModal({ event: null, initialDate: selectedDay })}
       />
@@ -141,6 +152,7 @@ export default function App() {
           onSaved={() => {
             setTideModal(false);
             reload();
+            reloadWeather();
           }}
           onClose={() => setTideModal(false)}
         />
