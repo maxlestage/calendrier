@@ -21,34 +21,52 @@ pub struct Port {
     pub name: &'static str,
     pub lat: f64,
     pub lon: f64,
-    /// In the default selection (Atlantic beach spots — « surtout l'océan »)
+    /// Coastal group, also usable as a TIDE_PORTS token:
+    /// "ocean" (Atlantique), "mer" (Méditerranée), "manche", "ports"
+    pub group: &'static str,
+    /// In the default selection (ocean + Mediterranean beaches)
     pub default_on: bool,
 }
 
-/// French coastal spots (Atlantic beaches first) and reference ports.
-/// Restrictable via the TIDE_PORTS env var (comma-separated keys,
-/// e.g. "biarritz,lacanau" — any key below, defaults ignored then).
-pub const PORTS: [Port; 10] = [
-    // Plages océanes (sélection par défaut)
-    Port { key: "biarritz", name: "Biarritz", lat: 43.4832, lon: -1.5586, default_on: true },
-    Port { key: "hossegor", name: "Hossegor", lat: 43.6644, lon: -1.4428, default_on: true },
-    Port { key: "lacanau", name: "Lacanau-Océan", lat: 44.9992, lon: -1.2032, default_on: true },
-    Port { key: "arcachon", name: "Arcachon", lat: 44.6611, lon: -1.1681, default_on: true },
-    Port { key: "les-sables", name: "Les Sables-d'Olonne", lat: 46.4961, lon: -1.7950, default_on: true },
-    Port { key: "la-baule", name: "La Baule", lat: 47.2780, lon: -2.3930, default_on: true },
-    // Ports de référence (activables via TIDE_PORTS)
-    Port { key: "brest", name: "Brest", lat: 48.3828, lon: -4.4956, default_on: false },
-    Port { key: "saint-malo", name: "Saint-Malo", lat: 48.6397, lon: -2.0257, default_on: false },
-    Port { key: "la-rochelle", name: "La Rochelle", lat: 46.1558, lon: -1.1517, default_on: false },
-    Port { key: "nice", name: "Nice", lat: 43.6954, lon: 7.2790, default_on: false },
+/// French coastal spots grouped by coast. TIDE_PORTS accepts a
+/// comma-separated mix of keys and group names, e.g. "mer,biarritz"
+/// or "ocean" alone (defaults are ignored when the variable is set).
+pub const PORTS: [Port; 19] = [
+    // Plages océanes — Atlantique (défaut)
+    Port { key: "biarritz", name: "Biarritz", lat: 43.4832, lon: -1.5586, group: "ocean", default_on: true },
+    Port { key: "hossegor", name: "Hossegor", lat: 43.6644, lon: -1.4428, group: "ocean", default_on: true },
+    Port { key: "lacanau", name: "Lacanau-Océan", lat: 44.9992, lon: -1.2032, group: "ocean", default_on: true },
+    Port { key: "arcachon", name: "Arcachon", lat: 44.6611, lon: -1.1681, group: "ocean", default_on: true },
+    Port { key: "les-sables", name: "Les Sables-d'Olonne", lat: 46.4961, lon: -1.7950, group: "ocean", default_on: true },
+    Port { key: "la-baule", name: "La Baule", lat: 47.2780, lon: -2.3930, group: "ocean", default_on: true },
+    // Plages de la mer — Méditerranée (défaut ; marnage faible ~20-40 cm)
+    Port { key: "marseille", name: "Marseille", lat: 43.2600, lon: 5.3700, group: "mer", default_on: true },
+    Port { key: "palavas", name: "Palavas-les-Flots", lat: 43.5250, lon: 3.9320, group: "mer", default_on: true },
+    Port { key: "cap-d-agde", name: "Cap d'Agde", lat: 43.2790, lon: 3.5150, group: "mer", default_on: true },
+    Port { key: "argeles", name: "Argelès-sur-Mer", lat: 42.5460, lon: 3.0420, group: "mer", default_on: true },
+    Port { key: "cannes", name: "Cannes", lat: 43.5480, lon: 7.0140, group: "mer", default_on: true },
+    Port { key: "nice", name: "Nice", lat: 43.6954, lon: 7.2790, group: "mer", default_on: true },
+    Port { key: "ajaccio", name: "Ajaccio", lat: 41.9180, lon: 8.7380, group: "mer", default_on: true },
+    // Plages de la Manche (activables : TIDE_PORTS=manche)
+    Port { key: "saint-malo", name: "Saint-Malo", lat: 48.6397, lon: -2.0257, group: "manche", default_on: false },
+    Port { key: "deauville", name: "Deauville", lat: 49.3620, lon: 0.0750, group: "manche", default_on: false },
+    Port { key: "le-touquet", name: "Le Touquet", lat: 50.5240, lon: 1.5850, group: "manche", default_on: false },
+    Port { key: "etretat", name: "Étretat", lat: 49.7080, lon: 0.2050, group: "manche", default_on: false },
+    // Ports de référence (activables : TIDE_PORTS=ports)
+    Port { key: "brest", name: "Brest", lat: 48.3828, lon: -4.4956, group: "ports", default_on: false },
+    Port { key: "la-rochelle", name: "La Rochelle", lat: 46.1558, lon: -1.1517, group: "ports", default_on: false },
 ];
 
-/// Ports enabled for this deployment (Atlantic beaches by default).
+/// Ports enabled for this deployment (ocean + Mediterranean beaches by
+/// default). TIDE_PORTS tokens match either a key or a whole group.
 pub fn enabled_ports() -> Vec<&'static Port> {
     match std::env::var("TIDE_PORTS") {
         Ok(list) if !list.trim().is_empty() => {
-            let keys: Vec<String> = list.split(',').map(|s| s.trim().to_lowercase()).collect();
-            PORTS.iter().filter(|p| keys.iter().any(|k| k == p.key)).collect()
+            let tokens: Vec<String> = list.split(',').map(|s| s.trim().to_lowercase()).collect();
+            PORTS
+                .iter()
+                .filter(|p| tokens.iter().any(|t| t == p.key || t == p.group))
+                .collect()
         }
         _ => PORTS.iter().filter(|p| p.default_on).collect(),
     }
