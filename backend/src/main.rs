@@ -83,7 +83,9 @@ async fn main() -> std::io::Result<()> {
                     .service(handlers::export_events)
                     .service(handlers::get_tide_spots)
                     .service(handlers::put_tide_spots)
-                    .service(handlers::get_beach_weather),
+                    .service(handlers::get_beach_weather)
+                    .service(handlers::get_weather_cities)
+                    .service(handlers::put_weather_cities),
             );
         if serve_static {
             let index = std::path::Path::new(&static_dir).join("index.html");

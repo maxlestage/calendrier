@@ -137,15 +137,80 @@ pub async fn export_events(snap: web::Data<Snapshot>) -> impl Responder {
     HttpResponse::Ok().json(snap.events())
 }
 
-/// Beach weather for the selected tide spots (Open-Meteo, cached ~30 min).
+/// Weather for the selected beaches AND cities (Open-Meteo, cached ~30 min).
 #[get("/beach-weather")]
 pub async fn get_beach_weather(
     db: web::Data<DatabaseConnection>,
     cache: web::Data<crate::weather::WeatherCache>,
 ) -> impl Responder {
-    let ports = crate::tides::selected_ports(db.get_ref()).await;
-    let spots = crate::weather::for_ports(cache.get_ref(), &ports).await;
+    let places = crate::weather::selected_places(db.get_ref()).await;
+    let spots = crate::weather::for_places(cache.get_ref(), &places).await;
     HttpResponse::Ok().json(serde_json::json!({ "spots": spots }))
+}
+
+// ---------------------------------------------------------------------------
+// Weather cities: catalog + user selection (same pattern as tide spots)
+
+#[derive(serde::Serialize)]
+pub struct WeatherCity {
+    key: &'static str,
+    name: &'static str,
+    selected: bool,
+}
+
+#[derive(Deserialize)]
+pub struct WeatherCitiesPayload {
+    pub cities: Vec<String>,
+}
+
+async fn weather_cities_response(db: &DatabaseConnection) -> Vec<WeatherCity> {
+    let selected: std::collections::HashSet<&str> = crate::weather::selected_cities(db)
+        .await
+        .into_iter()
+        .map(|c| c.key)
+        .collect();
+    crate::weather::CITIES
+        .iter()
+        .map(|c| WeatherCity {
+            key: c.key,
+            name: c.name,
+            selected: selected.contains(c.key),
+        })
+        .collect()
+}
+
+#[get("/weather-cities")]
+pub async fn get_weather_cities(db: web::Data<DatabaseConnection>) -> impl Responder {
+    HttpResponse::Ok().json(weather_cities_response(db.get_ref()).await)
+}
+
+#[put("/weather-cities")]
+pub async fn put_weather_cities(
+    db: web::Data<DatabaseConnection>,
+    payload: web::Json<WeatherCitiesPayload>,
+) -> impl Responder {
+    let tokens: Vec<String> = payload
+        .into_inner()
+        .cities
+        .iter()
+        .map(|s| s.trim().to_lowercase())
+        .filter(|s| !s.is_empty())
+        .collect();
+    for t in &tokens {
+        if !crate::weather::CITIES.iter().any(|c| c.key == *t) {
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({ "error": format!("ville inconnue : {t}") }));
+        }
+    }
+    if let Err(e) =
+        crate::settings::set(db.get_ref(), crate::weather::CITIES_SETTING, &tokens.join(",")).await
+    {
+        return HttpResponse::InternalServerError()
+            .json(serde_json::json!({ "error": e.to_string() }));
+    }
+    // No events to add/remove: weather is served live and the cache key
+    // (selected place keys) changes with the selection.
+    HttpResponse::Ok().json(weather_cities_response(db.get_ref()).await)
 }
 
 // ---------------------------------------------------------------------------
