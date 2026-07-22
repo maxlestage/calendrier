@@ -26,6 +26,9 @@ export interface TideSpot {
   selected: boolean;
 }
 
+/** Sea-blue used by the backend for tide events */
+export const TIDE_COLOR = "#0277bd";
+
 export const EVENT_COLORS = [
   "#4f6bed",
   "#0f9d58",
