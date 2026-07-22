@@ -111,16 +111,16 @@ Corps JSON pour `POST`/`PUT` :
 }
 ```
 
-## App iOS native
+## App iOS (webview)
 
-Une app **SwiftUI** (iOS 17+) connectée au même backend se trouve dans
-[`ios/`](ios/README.md) : grille mensuelle, agenda du jour, création/édition,
-URL du serveur configurable dans l'app. Nécessite un Mac avec Xcode 16+ pour
-compiler (voir le README dédié).
+L'app iOS ([`ios/`](ios/README.md)) est une **coquille WKWebView** qui charge
+l'app web : une seule cible, aucune capacité spéciale, signature automatique
+sans étape manuelle — et chaque déploiement Heroku met l'app à jour sans
+repasser par TestFlight. Pull-to-refresh, écran de secours pour changer
+l'URL du serveur.
 
-En attendant, le front web est une **PWA** : ouvre le site dans Safari →
-bouton Partager → « Sur l'écran d'accueil » pour l'installer en plein écran
-avec son icône, comme une app native.
+Le front web est aussi une **PWA** : Safari → Partager → « Sur l'écran
+d'accueil » pour l'installer en plein écran avec son icône.
 
 ## Structure
 
