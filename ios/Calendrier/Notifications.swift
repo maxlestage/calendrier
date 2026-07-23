@@ -51,7 +51,7 @@ enum Notifications {
             content.sound = .default
             let interval = it.fireAt.timeIntervalSince(now)
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(interval, 1), repeats: false)
-            center.add(UNNotificationRequest(identifier: it.id, content: content, trigger: trigger))
+            try? await center.add(UNNotificationRequest(identifier: it.id, content: content, trigger: trigger))
         }
     }
 
