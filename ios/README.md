@@ -16,6 +16,14 @@ sauvegardes) ; l'app est un **client natif** de cette API.
   - **rappel avant chaque événement** à heure fixe (délai réglable) ;
   - **résumé du matin** (météo + marées + événements) à l'heure choisie.
 - Splash de chargement, pull-to-refresh implicite via les rechargements.
+- **Persistance à toute épreuve** (`DeviceBackup.swift`) : l'app garde une
+  copie de tout (événements + réglages) sur le téléphone
+  (`Application Support`). Au lancement, elle compare un marqueur avec le
+  serveur : si le dyno Heroku a été remis à zéro, elle **repousse
+  automatiquement sa copie** (`GET /api/state`, `POST /api/import`). Marche
+  sans aucune config (pas besoin de clé Heroku) et survit même à un crash
+  brutal. Bonus : hors-ligne ou serveur down, l'app affiche les données
+  locales.
 
 ## Structure
 

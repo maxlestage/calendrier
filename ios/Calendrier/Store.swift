@@ -66,7 +66,15 @@ final class CalendarStore: ObservableObject {
             events = try await API.events(from: from, to: to)
             errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            // Offline / server down: fall back to the on-device copy so the
+            // app still shows the calendar. The views filter by day, so the
+            // whole cached set is safe to hand over.
+            if let cached = DeviceBackup.load()?.events {
+                events = cached
+                errorMessage = "Hors ligne — données locales"
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -90,19 +98,58 @@ final class CalendarStore: ObservableObject {
         if let id { _ = try await API.update(id, payload) } else { _ = try await API.create(payload) }
         await load()
         await syncNotifications()
+        await backupLocally()
     }
 
     func delete(_ id: Int) async throws {
         try await API.delete(id)
         await load()
         await syncNotifications()
+        await backupLocally()
     }
 
-    /// Full refresh used at launch and after settings changes.
+    /// Full refresh used after settings changes.
     func refreshAll() async {
         await load()
         await loadWeather()
         await loadPrefs()
         await syncNotifications()
+    }
+
+    // MARK: - Persistence across dyno resets
+
+    /// Boot sequence: restore the server from the device if it was wiped,
+    /// then load, then refresh the local copy.
+    func launch() async {
+        await restoreIfServerReset()
+        await refreshAll()
+        await backupLocally()
+    }
+
+    /// Compare markers: if the server's is gone/changed, it lost its
+    /// database — push the device's copy back. Ensure a marker exists.
+    private func restoreIfServerReset() async {
+        guard let server = try? await API.state() else { return }
+        let local = DeviceBackup.load()
+        let localMarker = local.flatMap { DeviceBackup.marker(in: $0) }
+        let serverMarker = DeviceBackup.marker(in: server)
+        if let local, let localMarker, serverMarker != localMarker {
+            _ = try? await API.importState(local)
+        }
+        if serverMarker == nil {
+            let seed = ServerState(
+                events: [],
+                settings: [SettingKV(key: DeviceBackup.markerKey, value: DeviceBackup.newMarker())]
+            )
+            _ = try? await API.importState(seed)
+        }
+    }
+
+    /// Refresh the on-device backup — but only from a marked server state, so
+    /// a freshly reset (marker-less) server never overwrites a good copy.
+    func backupLocally() async {
+        if let server = try? await API.state(), DeviceBackup.marker(in: server) != nil {
+            DeviceBackup.save(server)
+        }
     }
 }

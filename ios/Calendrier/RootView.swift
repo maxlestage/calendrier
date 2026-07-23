@@ -40,7 +40,7 @@ struct RootView: View {
             SearchView(onPick: { store.select($0) }).environmentObject(store)
         }
         .task {
-            await store.refreshAll()
+            await store.launch()
             if await Notifications.requestAuthorization() { await store.syncNotifications() }
         }
     }
