@@ -36,6 +36,13 @@ export default function App() {
   const [modal, setModal] = useState<ModalState | null>(null);
   const [tideModal, setTideModal] = useState(false);
   const [searchModal, setSearchModal] = useState(false);
+  const [calCollapsed, setCalCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("calCollapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
   const [error, setError] = useState<string | null>(null);
 
   // Bounds of the visible grid (6 weeks), not just the month
@@ -167,6 +174,18 @@ export default function App() {
     syncReminders();
   };
 
+  const toggleCalendar = () => {
+    setCalCollapsed((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem("calCollapsed", next ? "1" : "0");
+      } catch {
+        // storage unavailable (private mode): still works this session
+      }
+      return next;
+    });
+  };
+
   const dayEvents = events.filter((ev) => eventCoversDay(ev.start, ev.end, selectedDay));
 
   return (
@@ -206,6 +225,8 @@ export default function App() {
         weather={weather}
         selectedDay={selectedDay}
         onSelectDay={selectDay}
+        collapsed={calCollapsed}
+        onToggleCollapse={toggleCalendar}
       />
       <DayAgenda
         day={selectedDay}
