@@ -2,6 +2,9 @@ import SwiftUI
 
 struct MonthView: View {
     @EnvironmentObject var store: CalendarStore
+    /// Collapsed: only the selected day's week is shown (agenda gets the room).
+    let collapsed: Bool
+    let onToggle: () -> Void
 
     private var weatherByDate: [String: String] {
         var map: [String: String] = [:]
@@ -27,14 +30,28 @@ struct MonthView: View {
             }
             .padding(.vertical, 6)
 
+            let all = monthGridDays(year: store.year, month: store.month)
+            let selIndex = all.firstIndex { $0.sameDay(as: store.selectedDay) } ?? 0
+            let weekStart = (selIndex / 7) * 7
+            let days = collapsed ? Array(all[weekStart..<min(weekStart + 7, all.count)]) : all
             let cols = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
             LazyVGrid(columns: cols, spacing: 0) {
-                ForEach(monthGridDays(year: store.year, month: store.month), id: \.self) { day in
+                ForEach(days, id: \.self) { day in
                     cell(day)
                         .contentShape(Rectangle())
                         .onTapGesture { store.select(day) }
                 }
             }
+
+            Button(action: onToggle) {
+                Text(collapsed ? "▾ Afficher le mois" : "▴ Réduire le calendrier")
+                    .font(.caption).fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .overlay(alignment: .top) { Divider() }
+            }
+            .buttonStyle(.plain)
         }
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
