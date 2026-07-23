@@ -1,17 +1,31 @@
+import { useState } from "react";
 import type { BeachWeather, CalendarEvent } from "../types";
 import { FULL_DAY_NAMES, MONTH_NAMES, toDateKey, toTimeKey } from "../dates";
 import { formatNumber, weatherIcon } from "../weather";
+import { buildDaySpeech, speak, speechSupported, stopSpeech } from "../speech";
 
 interface Props {
   day: Date;
   events: CalendarEvent[];
   weather: BeachWeather[];
+  voiceEnabled: boolean;
   onEventClick: (event: CalendarEvent) => void;
   onAdd: () => void;
 }
 
-export default function DayAgenda({ day, events, weather, onEventClick, onAdd }: Props) {
+export default function DayAgenda({ day, events, weather, voiceEnabled, onEventClick, onAdd }: Props) {
   const sorted = [...events].sort((a, b) => a.start.localeCompare(b.start));
+  const [speaking, setSpeaking] = useState(false);
+
+  const toggleSpeak = () => {
+    if (speaking) {
+      stopSpeech();
+      setSpeaking(false);
+      return;
+    }
+    speak(buildDaySpeech(day, sorted, weather), () => setSpeaking(false));
+    setSpeaking(true);
+  };
   const dateKey = toDateKey(day);
   // One weather card per selected beach, when the forecast covers this day
   const cards = weather.flatMap((spot) => {
@@ -20,9 +34,20 @@ export default function DayAgenda({ day, events, weather, onEventClick, onAdd }:
   });
   return (
     <section className="agenda">
-      <h2 className="agenda-title">
-        {FULL_DAY_NAMES[day.getDay()]} {day.getDate()} {MONTH_NAMES[day.getMonth()].toLowerCase()}
-      </h2>
+      <div className="agenda-head">
+        <h2 className="agenda-title">
+          {FULL_DAY_NAMES[day.getDay()]} {day.getDate()} {MONTH_NAMES[day.getMonth()].toLowerCase()}
+        </h2>
+        {voiceEnabled && speechSupported() && (
+          <button
+            className="voice-btn"
+            onClick={toggleSpeak}
+            aria-label={speaking ? "Arrêter la lecture" : "Écouter la journée"}
+          >
+            {speaking ? "⏹️" : "🔊"}
+          </button>
+        )}
+      </div>
       {cards.length > 0 && (
         <ul className="beach-weather">
           {cards.map(({ spot, forecast }) => {
