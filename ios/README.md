@@ -52,13 +52,17 @@ contrairement au widget/aux notifications push qui avaient tout cassé.
 principale, il faut seulement l'autorisation de l'utilisateur (demandée à la
 première programmation).
 
-Le **web reste le cerveau** : l'app web calcule la liste des rappels (les
-événements *à heure fixe* des 14 prochains jours, sauf marées — 4/jour = trop
-—, rappel 15 min avant) et l'envoie au shell via
-`window.webkit.messageHandlers.reminders`. `NotificationBridge` ne fait que
-planifier ce qu'il reçoit (au plus 60, la limite iOS étant 64). Aucune
-logique dupliquée : la même app web sert la PWA, le navigateur et la
-coquille iOS.
+Le **web reste le cerveau** : l'app web calcule la liste des rappels et
+l'envoie au shell via `window.webkit.messageHandlers.reminders` :
+
+- les événements *à heure fixe* des 14 prochains jours (sauf marées —
+  4/jour = trop), rappel **15 min avant** ;
+- un **résumé des marées du jour** chaque matin (07:00 heure locale) par
+  plage sélectionnée (pleines/basses mers), au lieu d'alertes individuelles.
+
+`NotificationBridge` ne fait que planifier ce qu'il reçoit (au plus 60, la
+limite iOS étant 64). Aucune logique dupliquée : la même app web sert la
+PWA, le navigateur et la coquille iOS.
 
 > Le `project.pbxproj` est en format synchronisé (Xcode 16,
 > `PBXFileSystemSynchronizedRootGroup`) : `NotificationBridge.swift` est
