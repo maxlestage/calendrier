@@ -15,6 +15,7 @@ import {
 } from "./api";
 import { eventCoversDay, MONTH_NAMES, monthGridDays } from "./dates";
 import { getSetting, loadLocal, MARKER_KEY, newMarker, saveLocal } from "./storage";
+import { hasNativeReminders, syncNativeReminders } from "./notifications";
 import type { BeachWeather, CalendarEvent, EventPayload } from "./types";
 
 interface ModalState {
@@ -99,6 +100,18 @@ export default function App() {
 
   useEffect(reloadWeather, [reloadWeather]);
 
+  // Native iOS reminders: fetch the next two weeks and let the shell schedule
+  // local notifications for timed events. No-op outside the iOS webview.
+  const syncReminders = useCallback(() => {
+    if (!hasNativeReminders()) return;
+    const now = Date.now();
+    fetchEvents(new Date(now).toISOString(), new Date(now + 14 * 86400_000).toISOString())
+      .then(syncNativeReminders)
+      .catch(() => {});
+  }, []);
+
+  useEffect(syncReminders, [syncReminders]);
+
   const shiftMonth = (delta: number) => {
     const d = new Date(year, month + delta, 1);
     setYear(d.getFullYear());
@@ -129,6 +142,7 @@ export default function App() {
     }
     setModal(null);
     reload();
+    syncReminders();
   };
 
   const remove = async () => {
@@ -137,6 +151,7 @@ export default function App() {
     }
     setModal(null);
     reload();
+    syncReminders();
   };
 
   const dayEvents = events.filter((ev) => eventCoversDay(ev.start, ev.end, selectedDay));

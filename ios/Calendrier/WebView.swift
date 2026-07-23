@@ -12,6 +12,12 @@ struct WebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
+
+        // Let the web app schedule iOS local notifications through the bridge.
+        let controller = WKUserContentController()
+        controller.add(context.coordinator.notifications, name: NotificationBridge.messageName)
+        configuration.userContentController = controller
+
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.isOpaque = false
@@ -42,6 +48,8 @@ struct WebView: UIViewRepresentable {
     final class Coordinator: NSObject, WKNavigationDelegate {
         weak var webView: WKWebView?
         let onFailure: () -> Void
+        /// Owns the JS↔native notification bridge for this web view's lifetime.
+        let notifications = NotificationBridge()
 
         init(onFailure: @escaping () -> Void) {
             self.onFailure = onFailure

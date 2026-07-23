@@ -36,15 +36,36 @@ archive, signe et téléverse un build. Numéro de build = numéro du run.
 
 ```
 Calendrier/
-  CalendrierApp.swift   # Point d'entrée
-  ContentView.swift     # WebView + écran de secours (URL serveur éditable)
-  WebView.swift         # WKWebView (pull-to-refresh, gestion d'erreurs)
-  Assets.xcassets/      # Icône 1024 (RGB sans alpha) + couleur d'accent
+  CalendrierApp.swift      # Point d'entrée
+  ContentView.swift        # WebView + écran de secours (URL serveur éditable)
+  WebView.swift            # WKWebView (pull-to-refresh, gestion d'erreurs)
+  NotificationBridge.swift # Notifications locales pilotées par le web
+  Assets.xcassets/         # Icône 1024 (RGB sans alpha) + couleur d'accent
 ```
 
-## Ce que la webview ne fait pas (par rapport à l'ancienne app native)
+## Notifications locales (natif, sans complexité de signature)
 
-- Pas de widget d'écran d'accueil ni de notifications locales — c'étaient
-  les sources de toute la complexité de signature. Si besoin un jour, la
-  PWA installée depuis Safari peut recevoir des notifications web push
-  (iOS 16.4+), côté web uniquement.
+Les **notifications locales** (rappels d'événements) marchent depuis la
+coquille WKWebView **sans nouvelle capacité, entitlement ni bundle ID** —
+contrairement au widget/aux notifications push qui avaient tout cassé.
+`UNUserNotificationCenter` planifie des notifications locales dans la cible
+principale, il faut seulement l'autorisation de l'utilisateur (demandée à la
+première programmation).
+
+Le **web reste le cerveau** : l'app web calcule la liste des rappels (les
+événements *à heure fixe* des 14 prochains jours, sauf marées — 4/jour = trop
+—, rappel 15 min avant) et l'envoie au shell via
+`window.webkit.messageHandlers.reminders`. `NotificationBridge` ne fait que
+planifier ce qu'il reçoit (au plus 60, la limite iOS étant 64). Aucune
+logique dupliquée : la même app web sert la PWA, le navigateur et la
+coquille iOS.
+
+> Le `project.pbxproj` est en format synchronisé (Xcode 16,
+> `PBXFileSystemSynchronizedRootGroup`) : `NotificationBridge.swift` est
+> inclus automatiquement, aucune manip du projet.
+
+## Ce que la webview ne fait toujours pas
+
+- Pas de widget d'écran d'accueil (c'était la source de la complexité de
+  signature : une extension = un bundle ID à enregistrer). Les
+  notifications, elles, ne l'exigent pas et sont donc désormais natives.
