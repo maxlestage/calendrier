@@ -23,6 +23,18 @@ export function stopSpeech(): void {
   if (speechSupported()) window.speechSynthesis.cancel();
 }
 
+/** Remove emojis, pictographs and symbols so the voice reads only the words
+ * (no guessing at 🎒, ♌, 🌊, ▲…). Keeps letters, digits and punctuation. */
+function speakable(s: string): string {
+  return s
+    .replace(
+      /[\u{2190}-\u{21FF}\u{2300}-\u{27BF}\u{2B00}-\u{2BFF}\u{25A0}-\u{25FF}\u{FE00}-\u{FE0F}\u{20E3}\u{1F000}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}]/gu,
+      ""
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** "06:46" → "6 h 46", "19:00" → "19 h" (spoken French time). */
 function spokenTime(hhmm: string): string {
   const [h, m] = hhmm.split(":");
@@ -74,5 +86,5 @@ export function buildDaySpeech(
     out.push("Aucun événement.");
   }
 
-  return out.join(" ");
+  return speakable(out.join(" "));
 }
