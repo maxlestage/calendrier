@@ -37,11 +37,21 @@ archive, signe et téléverse un build. Numéro de build = numéro du run.
 ```
 Calendrier/
   CalendrierApp.swift      # Point d'entrée
-  ContentView.swift        # WebView + écran de secours (URL serveur éditable)
-  WebView.swift            # WKWebView (pull-to-refresh, gestion d'erreurs)
+  ContentView.swift        # Splash de chargement + WebView + écran de secours
+  WebView.swift            # WKWebView (pull-to-refresh, chargement, erreurs)
   NotificationBridge.swift # Notifications locales pilotées par le web
   Assets.xcassets/         # Icône 1024 (RGB sans alpha) + couleur d'accent
 ```
+
+### Démarrage
+
+Un **splash natif** (fond système adaptatif clair/sombre, 🌊 + « Calendrier »
++ indicateur d'activité) reste affiché tant que la première page web n'a pas
+fini de charger — il couvre l'attente réseau (un dyno Heroku froid peut mettre
+quelques secondes) au lieu d'une WebView blanche. Il disparaît en fondu à
+`didFinish` ; en cas d'échec, l'écran de secours (URL serveur éditable) prend
+le relais. L'écran de lancement iOS lui-même est généré (fond système), donc
+aucune transition blanche.
 
 ## Notifications locales (natif, sans complexité de signature)
 
