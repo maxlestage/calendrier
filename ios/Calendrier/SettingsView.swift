@@ -10,6 +10,7 @@ struct SettingsView: View {
     @State private var selectedCities: Set<String> = []
     @State private var prefs: NotifPrefs = .fallback
     @AppStorage("serverURL") private var serverURL = API.defaultBase
+    @AppStorage("voiceEnabled") private var voiceEnabled = false
     @State private var loaded = false
     @State private var busy = false
     @State private var error: String?
@@ -53,6 +54,10 @@ struct SettingsView: View {
                             ForEach(inGroup) { s in row(s.name, selectedSpots.contains(s.key)) { toggle(&selectedSpots, s.key) } }
                         }
                     }
+                }
+
+                Section("🔊 Lecture vocale") {
+                    Toggle("Bouton pour écouter la journée (météo, marées, événements)", isOn: $voiceEnabled)
                 }
 
                 Section {
