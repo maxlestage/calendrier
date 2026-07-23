@@ -87,6 +87,18 @@ struct BeachWeather: Codable, Identifiable, Hashable {
 
 struct BeachWeatherResponse: Codable { let spots: [BeachWeather] }
 
+/// A backend setting (key/value) as returned by /api/state.
+struct SettingKV: Codable, Hashable {
+    let key: String
+    let value: String
+}
+
+/// The unit the device stores locally and can push back after a dyno reset.
+struct ServerState: Codable {
+    var events: [CalendarEvent]
+    var settings: [SettingKV]
+}
+
 struct NotifPrefs: Codable, Equatable {
     var morningHour: Int
     var leadMin: Int

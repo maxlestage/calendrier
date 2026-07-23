@@ -107,6 +107,16 @@ struct API {
         try await run(URLRequest(url: try url("/prefs")), as: NotifPrefs.self)
     }
 
+    // MARK: Device backup (snapshot + settings)
+
+    static func state() async throws -> ServerState {
+        try await run(URLRequest(url: try url("/state")), as: ServerState.self)
+    }
+
+    static func importState(_ s: ServerState) async throws {
+        try await send(try json(try url("/import"), method: "POST", body: s))
+    }
+
     static func savePrefs(_ p: NotifPrefs) async throws -> NotifPrefs {
         try await run(try json(try url("/prefs"), method: "PUT", body: p), as: NotifPrefs.self)
     }
