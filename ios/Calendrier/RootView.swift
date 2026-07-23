@@ -6,6 +6,7 @@ struct RootView: View {
     @State private var editing: EditorTarget?
     @State private var showSettings = false
     @State private var showSearch = false
+    @AppStorage("calCollapsed") private var calCollapsed = false
 
     /// Wrap the optional event so `.sheet(item:)` can drive create *and* edit.
     private struct EditorTarget: Identifiable {
@@ -23,7 +24,7 @@ struct RootView: View {
                     .padding(8)
                     .background(RoundedRectangle(cornerRadius: 10).fill(Color.red.opacity(0.1)))
             }
-            MonthView()
+            MonthView(collapsed: calCollapsed) { calCollapsed.toggle() }
             AgendaView(
                 onEventTap: { ev in editing = EditorTarget(id: "e\(ev.id)", event: ev, date: ev.startDate) },
                 onAdd: { editing = EditorTarget(id: "new", event: nil, date: store.selectedDay) }
