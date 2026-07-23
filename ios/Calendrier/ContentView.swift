@@ -3,20 +3,51 @@ import SwiftUI
 struct ContentView: View {
     @AppStorage("serverURL") private var serverURL = "https://calendrier-89594ce603e6.herokuapp.com"
     @State private var loadFailed = false
+    @State private var isLoading = true
     @State private var draft = ""
 
     var body: some View {
         Group {
             if !loadFailed, let url = URL(string: serverURL), url.scheme?.hasPrefix("http") == true {
-                WebView(url: url) {
-                    loadFailed = true
+                ZStack {
+                    WebView(
+                        url: url,
+                        onLoaded: {
+                            withAnimation(.easeOut(duration: 0.35)) { isLoading = false }
+                        },
+                        onFailure: {
+                            isLoading = false
+                            loadFailed = true
+                        }
+                    )
+                    .ignoresSafeArea()
+
+                    if isLoading {
+                        splash.transition(.opacity)
+                    }
                 }
-                .ignoresSafeArea()
             } else {
                 fallback
             }
         }
         .onAppear { draft = serverURL }
+    }
+
+    /// Branded loading screen shown until the web app's first page finishes —
+    /// covers the network wait (a cold Heroku dyno can take a few seconds)
+    /// instead of a blank web view.
+    private var splash: some View {
+        ZStack {
+            Color(.systemBackground).ignoresSafeArea()
+            VStack(spacing: 16) {
+                Text("🌊")
+                    .font(.system(size: 64))
+                Text("Calendrier")
+                    .font(.title2.weight(.semibold))
+                ProgressView()
+                    .padding(.top, 4)
+            }
+        }
     }
 
     /// Shown when the page cannot load (server down, wrong URL): lets the
@@ -42,6 +73,7 @@ struct ContentView: View {
                 if !trimmed.isEmpty {
                     serverURL = trimmed
                 }
+                isLoading = true
                 loadFailed = false
             }
             .buttonStyle(.borderedProminent)
