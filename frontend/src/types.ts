@@ -71,6 +71,23 @@ export interface WeatherCity {
   selected: boolean;
 }
 
+/** Notification preferences (snake_case to match the backend JSON) */
+export interface NotifPrefs {
+  /** Hour (0–23, device-local) of the daily morning briefing */
+  morning_hour: number;
+  /** Minutes before a timed event to fire its reminder */
+  lead_min: number;
+  morning_briefing: boolean;
+  event_reminders: boolean;
+}
+
+export const DEFAULT_PREFS: NotifPrefs = {
+  morning_hour: 7,
+  lead_min: 15,
+  morning_briefing: true,
+  event_reminders: true,
+};
+
 export const EVENT_COLORS = [
   "#4f6bed",
   "#0f9d58",

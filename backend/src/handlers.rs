@@ -389,6 +389,35 @@ pub async fn put_weather_cities(
 }
 
 // ---------------------------------------------------------------------------
+// Notification preferences (used by the web to build the iOS reminders)
+
+#[get("/prefs")]
+pub async fn get_prefs(db: web::Data<DatabaseConnection>) -> impl Responder {
+    HttpResponse::Ok().json(crate::settings::notif_prefs(db.get_ref()).await)
+}
+
+#[put("/prefs")]
+pub async fn put_prefs(
+    db: web::Data<DatabaseConnection>,
+    payload: web::Json<crate::settings::NotifPrefs>,
+) -> impl Responder {
+    let prefs = payload.into_inner().sanitized();
+    match serde_json::to_string(&prefs) {
+        Ok(json) => {
+            if let Err(e) =
+                crate::settings::set(db.get_ref(), crate::settings::NOTIF_PREFS_SETTING, &json).await
+            {
+                return HttpResponse::InternalServerError()
+                    .json(serde_json::json!({ "error": e.to_string() }));
+            }
+            HttpResponse::Ok().json(prefs)
+        }
+        Err(e) => HttpResponse::InternalServerError()
+            .json(serde_json::json!({ "error": e.to_string() })),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // ICS feed — subscribe from the native iOS/Android/desktop calendar
 
 fn ics_escape(s: &str) -> String {

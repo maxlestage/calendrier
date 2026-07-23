@@ -599,6 +599,25 @@ button {
   color: var(--text);
 }
 
+.pref-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+}
+
+.pref-row input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.pref-inline {
+  width: auto;
+  padding: 8px 10px;
+}
+
 /* ---------- Search ---------- */
 
 .search-input {

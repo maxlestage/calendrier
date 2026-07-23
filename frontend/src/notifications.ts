@@ -1,6 +1,7 @@
-import type { CalendarEvent } from "./types";
+import type { BeachWeather, CalendarEvent, NotifPrefs } from "./types";
 import { TIDE_COLOR } from "./types";
 import { toDateKey, toTimeKey } from "./dates";
+import { weatherIcon } from "./weather";
 
 interface NativeBridge {
   postMessage: (msg: unknown) => void;
@@ -19,10 +20,7 @@ export function hasNativeReminders(): boolean {
   return nativeBridge() !== null;
 }
 
-const LEAD_MIN = 15;
 const HORIZON_DAYS = 14;
-/** Hour (device-local) of the daily tide-summary notification */
-const TIDE_SUMMARY_HOUR = 7;
 
 interface Reminder {
   id: string;
@@ -32,12 +30,17 @@ interface Reminder {
   fireAt: number;
 }
 
-/** Reminders the native shell should schedule, derived from the events. */
-export function buildReminders(events: CalendarEvent[], now = Date.now()): Reminder[] {
+/** Per-event reminders: timed events (not all-day, not tides) in the next 14
+ * days, `leadMin` minutes before they start. */
+export function buildReminders(
+  events: CalendarEvent[],
+  leadMin: number,
+  now = Date.now(),
+): Reminder[] {
   const horizon = now + HORIZON_DAYS * 86400_000;
-  const leadMs = LEAD_MIN * 60_000;
+  const leadMs = leadMin * 60_000;
   return events
-    .filter((ev) => !ev.all_day && ev.color !== TIDE_COLOR) // tides = 4/day, too noisy
+    .filter((ev) => !ev.all_day && ev.color !== TIDE_COLOR)
     .map((ev) => ({ ev, start: new Date(ev.start).getTime() }))
     .filter(({ start }) => start > now && start < horizon)
     .map(({ ev, start }) => {
@@ -55,46 +58,88 @@ export function buildReminders(events: CalendarEvent[], now = Date.now()): Remin
     });
 }
 
-/**
- * One notification per day (at TIDE_SUMMARY_HOUR, device-local) summarising
- * every selected beach's high/low tides — instead of 4 spammy alerts a day.
- */
-export function buildTideSummaries(events: CalendarEvent[], now = Date.now()): Reminder[] {
-  const tides = events.filter((ev) => ev.color === TIDE_COLOR);
-  if (tides.length === 0) return [];
+interface DayContent {
+  weather: string[];
+  tides: Map<string, { high: boolean; t: string }[]>;
+  events: { time: string | null; title: string }[];
+}
 
-  // day (device-local) → beach → tide lines
-  const byDay = new Map<string, Map<string, { high: boolean; t: string }[]>>();
-  for (const ev of tides) {
-    const d = new Date(ev.start);
-    const dayKey = toDateKey(d);
-    const beach = ev.title.split(" — ")[0].replace("🌊", "").trim();
-    const high = ev.title.includes("Pleine mer");
-    const beaches = byDay.get(dayKey) ?? new Map();
-    const list = beaches.get(beach) ?? [];
-    list.push({ high, t: toTimeKey(d) });
-    beaches.set(beach, list);
-    byDay.set(dayKey, beaches);
+/**
+ * One "morning briefing" notification per day at `hour` (device-local),
+ * combining the weather of the selected places, the tides of the selected
+ * beaches, and the day's events — one glance instead of many pings.
+ */
+export function buildMorningBriefings(
+  events: CalendarEvent[],
+  weather: BeachWeather[],
+  hour: number,
+  now = Date.now(),
+): Reminder[] {
+  const days = new Map<string, DayContent>();
+  const ensure = (k: string): DayContent => {
+    let e = days.get(k);
+    if (!e) {
+      e = { weather: [], tides: new Map(), events: [] };
+      days.set(k, e);
+    }
+    return e;
+  };
+
+  for (const place of weather) {
+    for (const d of place.days) {
+      if (d.tmax === null && d.code === null) continue;
+      const emoji = weatherIcon(d.code).emoji;
+      const temp =
+        d.tmax !== null
+          ? `${Math.round(d.tmax)}°${d.tmin !== null ? `/${Math.round(d.tmin)}°` : ""}`
+          : "";
+      ensure(d.date).weather.push(`${place.name} ${emoji} ${temp}`.trim());
+    }
+  }
+
+  for (const ev of events) {
+    const start = new Date(ev.start);
+    const dayKey = toDateKey(start);
+    if (ev.color === TIDE_COLOR) {
+      const beach = ev.title.split(" — ")[0].replace("🌊", "").trim();
+      const e = ensure(dayKey);
+      const list = e.tides.get(beach) ?? [];
+      list.push({ high: ev.title.includes("Pleine mer"), t: toTimeKey(start) });
+      e.tides.set(beach, list);
+    } else {
+      ensure(dayKey).events.push({
+        time: ev.all_day ? null : toTimeKey(start),
+        title: ev.title,
+      });
+    }
   }
 
   const out: Reminder[] = [];
-  for (const [dayKey, beaches] of byDay) {
+  for (const [dayKey, content] of days) {
     const [y, m, dd] = dayKey.split("-").map(Number);
-    const fire = new Date(y, m - 1, dd, TIDE_SUMMARY_HOUR, 0).getTime();
-    if (fire <= now) continue; // this morning already passed
-    const lines = [...beaches].map(([beach, list]) => {
+    const fire = new Date(y, m - 1, dd, hour, 0).getTime();
+    if (fire <= now) continue; // that morning already passed
+    const lines: string[] = [];
+    if (content.weather.length) lines.push(`☀️ ${content.weather.join(" · ")}`);
+    for (const [beach, list] of content.tides) {
       const fmt = (high: boolean) =>
         list
           .filter((x) => x.high === high)
           .map((x) => x.t)
           .join(" ");
-      const highs = fmt(true);
-      const lows = fmt(false);
-      return `${beach} — PM ${highs || "—"} · BM ${lows || "—"}`;
-    });
+      lines.push(`🌊 ${beach} — PM ${fmt(true) || "—"} · BM ${fmt(false) || "—"}`);
+    }
+    if (content.events.length) {
+      const evStr = content.events
+        .sort((a, b) => (a.time ?? "").localeCompare(b.time ?? ""))
+        .map((e) => (e.time ? `${e.time} ${e.title}` : e.title))
+        .join(" · ");
+      lines.push(`📅 ${evStr}`);
+    }
+    if (!lines.length) continue;
     out.push({
-      id: `tides-${dayKey}`,
-      title: "🌊 Marées du jour",
+      id: `briefing-${dayKey}`,
+      title: "☀️ Ta journée",
       body: lines.join("\n"),
       fireAt: Math.floor(fire / 1000),
     });
@@ -106,12 +151,17 @@ export function buildTideSummaries(events: CalendarEvent[], now = Date.now()): R
  * Hand the native iOS shell the reminders worth firing. The web is the brain
  * (it knows a tide from an F1 session from a personal event); the native
  * layer just schedules whatever we send. No-op outside the shell.
- *
- * - timed events (not all-day, not tides) in the next 14 days, 15 min before;
- * - one daily tide summary per morning for the selected beaches.
  */
-export function syncNativeReminders(events: CalendarEvent[]): void {
+export function syncNativeReminders(
+  events: CalendarEvent[],
+  weather: BeachWeather[],
+  prefs: NotifPrefs,
+): void {
   const native = nativeBridge();
   if (!native) return;
-  native.postMessage([...buildReminders(events), ...buildTideSummaries(events)]);
+  const items: Reminder[] = [];
+  if (prefs.event_reminders) items.push(...buildReminders(events, prefs.lead_min));
+  if (prefs.morning_briefing)
+    items.push(...buildMorningBriefings(events, weather, prefs.morning_hour));
+  native.postMessage(items);
 }
