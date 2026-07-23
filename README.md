@@ -140,22 +140,23 @@ Corps JSON pour `POST`/`PUT` :
 }
 ```
 
-## App iOS (webview)
+## App iOS (native SwiftUI)
 
-L'app iOS ([`ios/`](ios/README.md)) est une **coquille WKWebView** qui charge
-l'app web : une seule cible, aucune capacité spéciale, signature automatique
-sans étape manuelle — et chaque déploiement Heroku met l'app à jour sans
-repasser par TestFlight. Pull-to-refresh, écran de secours pour changer
-l'URL du serveur, et **notifications locales natives** : rappels avant tes
-événements (délai réglable) et un **résumé du matin** (météo + marées +
-événements du jour) à l'heure de ton choix — réglés dans l'app (`GET/PUT
-/api/prefs`) et planifiés par le shell via `UNUserNotificationCenter`, sans
-aucun entitlement ni bundle ID supplémentaire. Pour des notifications *sans*
-l'app (marées, F1…), l'abonnement ICS au Calendrier natif reste l'autre
-option.
+L'app iOS ([`ios/`](ios/README.md)) est une **vraie application native écrite
+en SwiftUI** : toute l'interface (grille mensuelle, agenda, cartes météo,
+marées, éditeur d'événements, recherche, réglages) est en code natif et
+**parle au backend Rust via son API REST**. Le backend reste le cerveau ;
+l'app en est un client natif. Une seule cible, aucune capacité spéciale,
+signature automatique sans étape manuelle, et **notifications locales
+natives** (`UNUserNotificationCenter`, sans entitlement ni bundle ID
+supplémentaire) : rappels avant tes événements (délai réglable) et un
+**résumé du matin** (météo + marées + événements du jour) à l'heure de ton
+choix. Pour des notifications *sans* l'app (marées, F1…), l'abonnement ICS au
+Calendrier natif reste l'autre option.
 
-Le front web est aussi une **PWA** : Safari → Partager → « Sur l'écran
-d'accueil » pour l'installer en plein écran avec son icône.
+Le front web reste servi par le backend (et est aussi une **PWA** : Safari →
+Partager → « Sur l'écran d'accueil ») — utile en dépannage ou sur Android,
+mais l'app iOS n'en dépend plus.
 
 ## Structure
 
