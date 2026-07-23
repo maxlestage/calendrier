@@ -35,6 +35,14 @@ function speakable(s: string): string {
     .trim();
 }
 
+/** Expand abbreviations so the voice says the words, not the letters. */
+function expandForSpeech(s: string): string {
+  return s
+    .replace(/\bGP\b/g, "Grand Prix")
+    .replace(/\bF1\b/g, "Formule 1")
+    .replace(/\bQualifs?\b/gi, "Qualifications");
+}
+
 /** "06:46" → "6 h 46", "19:00" → "19 h" (spoken French time). */
 function spokenTime(hhmm: string): string {
   const [h, m] = hhmm.split(":");
@@ -86,5 +94,5 @@ export function buildDaySpeech(
     out.push("Aucun événement.");
   }
 
-  return speakable(out.join(" "));
+  return expandForSpeech(speakable(out.join(" ")));
 }

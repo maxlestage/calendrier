@@ -61,6 +61,18 @@ private func speakable(_ s: String) -> String {
         .joined(separator: " ")
 }
 
+/// Expand abbreviations so the voice says the words, not the letters.
+private func expandForSpeech(_ s: String) -> String {
+    var out = s
+    out = out.replacingOccurrences(of: "\\bGP\\b", with: "Grand Prix", options: .regularExpression)
+    out = out.replacingOccurrences(of: "\\bF1\\b", with: "Formule 1", options: .regularExpression)
+    out = out.replacingOccurrences(
+        of: "\\bQualifs?\\b", with: "Qualifications",
+        options: [.regularExpression, .caseInsensitive]
+    )
+    return out
+}
+
 /// "06:46" → "6 h 46", "19:00" → "19 h" (spoken French time).
 private func spokenTime(_ hhmm: String) -> String {
     let parts = hhmm.split(separator: ":")
@@ -113,5 +125,5 @@ func buildDaySpeech(day: Date, dayEvents: [CalendarEvent], weather: [BeachWeathe
         out.append("Événements : \(list.joined(separator: ", ")).")
     }
 
-    return speakable(out.joined(separator: " "))
+    return expandForSpeech(speakable(out.joined(separator: " ")))
 }
