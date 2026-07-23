@@ -9,7 +9,7 @@ struct RootView: View {
     @State private var showSettings = false
     @State private var showSearch = false
     @AppStorage("calCollapsed") private var calCollapsed = false
-    @AppStorage("voiceEnabled") private var voiceEnabled = false
+    @AppStorage("voiceEnabled") private var voiceEnabled = true
 
     /// Recompute the weather every hour.
     private let hourly = Timer.publish(every: 3600, on: .main, in: .common).autoconnect()
