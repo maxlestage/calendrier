@@ -1,12 +1,18 @@
+import Combine
 import SwiftUI
 
 struct RootView: View {
     @StateObject private var store = CalendarStore()
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var editing: EditorTarget?
     @State private var showSettings = false
     @State private var showSearch = false
     @AppStorage("calCollapsed") private var calCollapsed = false
+    @AppStorage("voiceEnabled") private var voiceEnabled = false
+
+    /// Recompute the weather every hour.
+    private let hourly = Timer.publish(every: 3600, on: .main, in: .common).autoconnect()
 
     /// Wrap the optional event so `.sheet(item:)` can drive create *and* edit.
     private struct EditorTarget: Identifiable {
@@ -26,6 +32,7 @@ struct RootView: View {
             }
             MonthView(collapsed: calCollapsed) { calCollapsed.toggle() }
             AgendaView(
+                voiceEnabled: voiceEnabled,
                 onEventTap: { ev in editing = EditorTarget(id: "e\(ev.id)", event: ev, date: ev.startDate) },
                 onAdd: { editing = EditorTarget(id: "new", event: nil, date: store.selectedDay) }
             )
@@ -43,6 +50,12 @@ struct RootView: View {
         .task {
             await store.launch()
             if await Notifications.requestAuthorization() { await store.syncNotifications() }
+        }
+        .onReceive(hourly) { _ in
+            Task { await store.loadWeather() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await store.loadWeather() } }
         }
     }
 
