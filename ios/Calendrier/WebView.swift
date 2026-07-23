@@ -3,10 +3,11 @@ import WebKit
 
 struct WebView: UIViewRepresentable {
     let url: URL
+    var onLoaded: () -> Void
     var onFailure: () -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onFailure: onFailure)
+        Coordinator(onLoaded: onLoaded, onFailure: onFailure)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -47,11 +48,13 @@ struct WebView: UIViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         weak var webView: WKWebView?
+        let onLoaded: () -> Void
         let onFailure: () -> Void
         /// Owns the JS↔native notification bridge for this web view's lifetime.
         let notifications = NotificationBridge()
 
-        init(onFailure: @escaping () -> Void) {
+        init(onLoaded: @escaping () -> Void, onFailure: @escaping () -> Void) {
+            self.onLoaded = onLoaded
             self.onFailure = onFailure
         }
 
@@ -61,6 +64,7 @@ struct WebView: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             webView.scrollView.refreshControl?.endRefreshing()
+            onLoaded()
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
