@@ -2,6 +2,8 @@ import SwiftUI
 
 struct AgendaView: View {
     @EnvironmentObject var store: CalendarStore
+    @ObservedObject var speaker = Speaker.shared
+    var voiceEnabled: Bool
     var onEventTap: (CalendarEvent) -> Void
     var onAdd: () -> Void
 
@@ -17,10 +19,26 @@ struct AgendaView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                Text("\(weekday) \(dayNum) \(monthName)")
-                    .font(.subheadline).fontWeight(.bold)
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, 4)
+                HStack {
+                    Text("\(weekday) \(dayNum) \(monthName)")
+                        .font(.subheadline).fontWeight(.bold)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if voiceEnabled {
+                        Button {
+                            speaker.toggle(buildDaySpeech(
+                                day: store.selectedDay,
+                                dayEvents: store.eventsForSelectedDay,
+                                weather: store.weather
+                            ))
+                        } label: {
+                            Image(systemName: speaker.speaking ? "stop.circle.fill" : "speaker.wave.2.fill")
+                                .font(.title3)
+                        }
+                        .accessibilityLabel(speaker.speaking ? "Arrêter la lecture" : "Écouter la journée")
+                    }
+                }
+                .padding(.horizontal, 4)
 
                 ForEach(weatherCards, id: \.spot.id) { card in
                     WeatherCardView(spot: card.spot, day: card.day)

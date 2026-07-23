@@ -100,3 +100,22 @@ func weatherEmoji(_ code: Int?) -> String {
     default: return "🌡️"
     }
 }
+
+/// WMO code → French label (spoken by the voice summary).
+func weatherLabel(_ code: Int?) -> String {
+    guard let c = code else { return "météo" }
+    switch c {
+    case 0: return "ciel dégagé"
+    case 1: return "plutôt dégagé"
+    case 2: return "partiellement nuageux"
+    case 3: return "couvert"
+    case 45, 48: return "brouillard"
+    case 51...57: return "bruine"
+    case 61...67: return "pluie"
+    case 71...77: return "neige"
+    case 80...82: return "averses"
+    case 85, 86: return "averses de neige"
+    case 95...99: return "orage"
+    default: return "météo"
+    }
+}
