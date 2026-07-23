@@ -10,10 +10,26 @@ interface Props {
   weather: BeachWeather[];
   selectedDay: Date;
   onSelectDay: (day: Date) => void;
+  /** When true, only the selected day's week is shown (agenda gets the room) */
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
-export default function CalendarGrid({ year, month, events, weather, selectedDay, onSelectDay }: Props) {
-  const days = monthGridDays(year, month);
+export default function CalendarGrid({
+  year,
+  month,
+  events,
+  weather,
+  selectedDay,
+  onSelectDay,
+  collapsed,
+  onToggleCollapse,
+}: Props) {
+  const allDays = monthGridDays(year, month);
+  // Collapsed: show just the week (7 days) containing the selected day.
+  const selIndex = allDays.findIndex((d) => isSameDay(d, selectedDay));
+  const weekStart = selIndex >= 0 ? Math.floor(selIndex / 7) * 7 : 0;
+  const days = collapsed ? allDays.slice(weekStart, weekStart + 7) : allDays;
   const today = new Date();
   // Weather emoji per day cell, from the first selected place
   const wxByDate = new Map<string, string>();
@@ -74,6 +90,13 @@ export default function CalendarGrid({ year, month, events, weather, selectedDay
           );
         })}
       </div>
+      <button
+        className="cal-toggle"
+        onClick={onToggleCollapse}
+        aria-label={collapsed ? "Agrandir le calendrier" : "Réduire le calendrier"}
+      >
+        {collapsed ? "▾ Afficher le mois" : "▴ Réduire le calendrier"}
+      </button>
     </div>
   );
 }
