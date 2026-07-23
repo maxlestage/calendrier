@@ -118,6 +118,23 @@ button {
   grid-template-columns: repeat(7, 1fr);
 }
 
+/* Collapse/expand handle under the month grid */
+.cal-toggle {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--border);
+  background: #fff;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.cal-toggle:active {
+  background: #eef0f6;
+}
+
 .cell {
   border: none;
   background: none;
