@@ -45,9 +45,10 @@ export default function App() {
   });
   const [voiceEnabled, setVoiceEnabledState] = useState(() => {
     try {
-      return localStorage.getItem("voiceEnabled") === "1";
+      // Visible by default; only hidden if the user turned it off.
+      return localStorage.getItem("voiceEnabled") !== "0";
     } catch {
-      return false;
+      return true;
     }
   });
 

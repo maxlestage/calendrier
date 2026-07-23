@@ -10,7 +10,7 @@ struct SettingsView: View {
     @State private var selectedCities: Set<String> = []
     @State private var prefs: NotifPrefs = .fallback
     @AppStorage("serverURL") private var serverURL = API.defaultBase
-    @AppStorage("voiceEnabled") private var voiceEnabled = false
+    @AppStorage("voiceEnabled") private var voiceEnabled = true
     @State private var loaded = false
     @State private var busy = false
     @State private var error: String?
