@@ -8,6 +8,7 @@ struct RootView: View {
     @State private var editing: EditorTarget?
     @State private var showSettings = false
     @State private var showSearch = false
+    @State private var ready = false
     @AppStorage("calCollapsed") private var calCollapsed = false
     @AppStorage("voiceEnabled") private var voiceEnabled = true
 
@@ -22,6 +23,26 @@ struct RootView: View {
     }
 
     var body: some View {
+        ZStack {
+            mainView
+            if !ready {
+                SplashView().transition(.opacity)
+            }
+        }
+        .task {
+            await store.launch()
+            withAnimation(.easeOut(duration: 0.4)) { ready = true }
+            if await Notifications.requestAuthorization() { await store.syncNotifications() }
+        }
+        .onReceive(hourly) { _ in
+            Task { await store.loadWeather() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await store.loadWeather() } }
+        }
+    }
+
+    private var mainView: some View {
         VStack(spacing: 8) {
             toolbar
             if let msg = store.errorMessage {
@@ -46,16 +67,6 @@ struct RootView: View {
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
         .sheet(isPresented: $showSearch) {
             SearchView(onPick: { store.select($0) }).environmentObject(store)
-        }
-        .task {
-            await store.launch()
-            if await Notifications.requestAuthorization() { await store.syncNotifications() }
-        }
-        .onReceive(hourly) { _ in
-            Task { await store.loadWeather() }
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await store.loadWeather() } }
         }
     }
 
