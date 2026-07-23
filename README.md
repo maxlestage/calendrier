@@ -145,9 +145,10 @@ l'app web : une seule cible, aucune capacité spéciale, signature automatique
 sans étape manuelle — et chaque déploiement Heroku met l'app à jour sans
 repasser par TestFlight. Pull-to-refresh, écran de secours pour changer
 l'URL du serveur, et **notifications locales natives** : le web calcule les
-rappels (événements à heure fixe des 14 prochains jours, 15 min avant) et le
-shell les planifie via `UNUserNotificationCenter` — sans aucun entitlement ni
-bundle ID supplémentaire. Pour des notifications *sans* l'app (marées, F1…),
+rappels (événements à heure fixe des 14 prochains jours, 15 min avant ; plus
+un résumé des marées du jour chaque matin) et le shell les planifie via
+`UNUserNotificationCenter` — sans aucun entitlement ni bundle ID
+supplémentaire. Pour des notifications *sans* l'app (marées, F1…),
 l'abonnement ICS au Calendrier natif reste l'autre option.
 
 Le front web est aussi une **PWA** : Safari → Partager → « Sur l'écran
