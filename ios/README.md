@@ -1,90 +1,58 @@
-# Calendrier — app iOS (webview)
+# Calendrier — app iOS **native (SwiftUI)**
 
-Coquille iOS minimale : une **WKWebView plein écran** qui charge l'app web
-Calendrier (React/PWA servie par le backend). Toute l'interface — grille
-mensuelle, agenda, sélecteur de plages pour les marées — vit côté web, donc
-chaque déploiement Heroku met l'app à jour **sans repasser par TestFlight**.
+Vraie application iOS native, écrite en **SwiftUI**. Plus de WebView : toute
+l'interface (grille mensuelle, agenda, cartes météo, marées, éditeur
+d'événements, recherche, réglages) est en code natif et parle au backend
+Rust via son **API REST**.
+
+Le backend reste le cerveau (marées, météo, F1, vacances, astronomie,
+sauvegardes) ; l'app est un **client natif** de cette API.
 
 - **Une seule cible**, aucune capacité spéciale, aucun App Group : la
-  signature automatique (Xcode Cloud ou locale) n'a rien à enregistrer à
-  part le bundle ID `com.maxlestage.calendrier`, déjà créé avec la fiche
-  App Store Connect
-- Tirer vers le bas pour recharger la page
-- Si la page ne charge pas (serveur down, mauvaise adresse), un écran de
-  secours permet de corriger l'URL du serveur (persistée via `@AppStorage`)
-- URL par défaut : le backend Heroku (`ContentView.swift`)
-
-## Compiler
-
-- **Xcode Cloud** : la fiche app App Store Connect suffit — plus aucune
-  étape manuelle (le widget/extension qui exigeait un bundle ID à
-  enregistrer a été supprimé avec l'app native)
-- **GitHub Actions** : workflow `TestFlight` (voir ci-dessous)
-- **Mac local** : ouvrir `ios/Calendrier.xcodeproj`, choisir ton Team, ⌘R
-
-## CI TestFlight (GitHub Actions, sans Mac)
-
-Prérequis : compte Apple Developer Program payant, et les secrets GitHub
-`APPLE_TEAM_ID`, `APPSTORE_KEY_ID`, `APPSTORE_ISSUER_ID`, `APPSTORE_P8`,
-`DIST_CERT_BASE64`, `DIST_CERT_PASSWORD` (le certificat se crée sans Mac via
-le workflow « iOS — Créer le certificat de distribution »).
-
-Chaque push sur `master` touchant `ios/**` (ou un *Run workflow* manuel)
-archive, signe et téléverse un build. Numéro de build = numéro du run.
+  signature automatique n'a rien à enregistrer à part le bundle ID
+  `com.maxlestage.calendrier`, déjà créé côté App Store Connect.
+- **Notifications locales natives** (`UNUserNotificationCenter`) — aucun
+  entitlement ni bundle ID supplémentaire :
+  - **rappel avant chaque événement** à heure fixe (délai réglable) ;
+  - **résumé du matin** (météo + marées + événements) à l'heure choisie.
+- Splash de chargement, pull-to-refresh implicite via les rechargements.
 
 ## Structure
 
 ```
 Calendrier/
-  CalendrierApp.swift      # Point d'entrée
-  ContentView.swift        # Splash de chargement + WebView + écran de secours
-  WebView.swift            # WKWebView (pull-to-refresh, chargement, erreurs)
-  NotificationBridge.swift # Notifications locales pilotées par le web
-  Assets.xcassets/         # Icône 1024 (RGB sans alpha) + couleur d'accent
+  CalendrierApp.swift    # @main → RootView
+  RootView.swift         # Écran principal (barre, grille, agenda, FAB, sheets)
+  MonthView.swift        # Grille mensuelle (dots, heures de marée, météo/jour)
+  AgendaView.swift       # Agenda du jour + cartes météo
+  EventEditorView.swift  # Création / édition / suppression d'événement
+  SearchView.swift       # Recherche par titre
+  SettingsView.swift     # Plages, villes, notifications, URL serveur
+  Store.swift            # CalendarStore (ObservableObject) — état global
+  API.swift              # Client REST du backend Rust
+  Models.swift           # Types Codable (miroir de l'API)
+  Notifications.swift    # Planification des notifications locales
+  Utils.swift            # Dates ISO, grille, couleurs hex, emoji météo
+  Assets.xcassets/       # Icône 1024 (RGB sans alpha) + couleur d'accent
 ```
 
-### Démarrage
+## Configuration
 
-Un **splash natif** (fond système adaptatif clair/sombre, 🌊 + « Calendrier »
-+ indicateur d'activité) reste affiché tant que la première page web n'a pas
-fini de charger — il couvre l'attente réseau (un dyno Heroku froid peut mettre
-quelques secondes) au lieu d'une WebView blanche. Il disparaît en fondu à
-`didFinish` ; en cas d'échec, l'écran de secours (URL serveur éditable) prend
-le relais. L'écran de lancement iOS lui-même est généré (fond système), donc
-aucune transition blanche.
+- **URL du serveur** : par défaut le backend Heroku ; modifiable dans
+  Réglages (⚙️) → section « Serveur » (persisté via `@AppStorage`).
+- iOS 17 minimum. Pas d'`Info.plist` manuel (généré),
+  `ITSAppUsesNonExemptEncryption=NO`, iPhone portrait.
 
-## Notifications locales (natif, sans complexité de signature)
+## Compiler / publier
 
-Les **notifications locales** (rappels d'événements) marchent depuis la
-coquille WKWebView **sans nouvelle capacité, entitlement ni bundle ID** —
-contrairement au widget/aux notifications push qui avaient tout cassé.
-`UNUserNotificationCenter` planifie des notifications locales dans la cible
-principale, il faut seulement l'autorisation de l'utilisateur (demandée à la
-première programmation).
+- **Xcode Cloud** : la fiche App Store Connect suffit (bundle ID déjà créé),
+  aucune étape manuelle.
+- **GitHub Actions** : workflow `TestFlight` (secrets `APPLE_TEAM_ID`,
+  `APPSTORE_KEY_ID`, `APPSTORE_ISSUER_ID`, `APPSTORE_P8`, `DIST_CERT_BASE64`,
+  `DIST_CERT_PASSWORD`). Le certificat se crée sans Mac via le workflow
+  « iOS — Créer le certificat de distribution ».
+- **Mac local** : ouvrir `ios/Calendrier.xcodeproj`, choisir ton Team, ⌘R.
 
-Le **web reste le cerveau** : l'app web calcule la liste des rappels et
-l'envoie au shell via `window.webkit.messageHandlers.reminders` :
-
-- **Rappel avant mes événements** : les événements *à heure fixe* des 14
-  prochains jours (sauf marées — 4/jour = trop), délai réglable (0 à 120
-  min avant, 15 par défaut) ;
-- **Résumé du matin** : une notification par jour à l'heure choisie
-  (07:00 par défaut) combinant **météo** des lieux, **marées** des plages
-  (pleines/basses mers) et **événements du jour** — un coup d'œil au lieu
-  de plusieurs pings.
-
-Les deux sont activables/désactivables, l'heure du résumé et le délai des
-rappels sont réglables — via `GET/PUT /api/prefs`, dans le sélecteur 🌊 de
-l'app (section « Notifications »). `NotificationBridge` ne fait que planifier
-ce qu'il reçoit (au plus 60, la limite iOS étant 64). Aucune logique
-dupliquée : la même app web sert la PWA, le navigateur et la coquille iOS.
-
-> Le `project.pbxproj` est en format synchronisé (Xcode 16,
-> `PBXFileSystemSynchronizedRootGroup`) : `NotificationBridge.swift` est
-> inclus automatiquement, aucune manip du projet.
-
-## Ce que la webview ne fait toujours pas
-
-- Pas de widget d'écran d'accueil (c'était la source de la complexité de
-  signature : une extension = un bundle ID à enregistrer). Les
-  notifications, elles, ne l'exigent pas et sont donc désormais natives.
+Le `project.pbxproj` est en format synchronisé (Xcode 16,
+`PBXFileSystemSynchronizedRootGroup`) : les fichiers `.swift` du dossier sont
+inclus automatiquement, aucune manip du projet à l'ajout/suppression.
