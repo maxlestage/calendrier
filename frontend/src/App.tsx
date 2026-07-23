@@ -43,6 +43,22 @@ export default function App() {
       return false;
     }
   });
+  const [voiceEnabled, setVoiceEnabledState] = useState(() => {
+    try {
+      return localStorage.getItem("voiceEnabled") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const setVoiceEnabled = (on: boolean) => {
+    setVoiceEnabledState(on);
+    try {
+      localStorage.setItem("voiceEnabled", on ? "1" : "0");
+    } catch {
+      // storage unavailable: still works this session
+    }
+  };
   const [error, setError] = useState<string | null>(null);
 
   // Bounds of the visible grid (6 weeks), not just the month
@@ -109,6 +125,20 @@ export default function App() {
   }, []);
 
   useEffect(reloadWeather, [reloadWeather]);
+
+  // Recompute the weather every hour, and whenever the app comes back to the
+  // foreground, so cities and beaches stay current without a manual refresh.
+  useEffect(() => {
+    const hourly = window.setInterval(reloadWeather, 3600_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") reloadWeather();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(hourly);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [reloadWeather]);
 
   // Notification preferences (morning-briefing hour, reminder lead, toggles)
   const loadPrefs = useCallback(() => {
@@ -232,6 +262,7 @@ export default function App() {
         day={selectedDay}
         events={dayEvents}
         weather={weather}
+        voiceEnabled={voiceEnabled}
         onEventClick={(event) => setModal({ event, initialDate: new Date(event.start) })}
         onAdd={() => setModal({ event: null, initialDate: selectedDay })}
       />
@@ -262,6 +293,8 @@ export default function App() {
       )}
       {tideModal && (
         <TideSpotsModal
+          voiceEnabled={voiceEnabled}
+          onVoiceChange={setVoiceEnabled}
           onSaved={() => {
             setTideModal(false);
             reload();
