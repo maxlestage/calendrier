@@ -9,6 +9,7 @@ import {
   deleteEvent,
   fetchBeachWeather,
   fetchEvents,
+  fetchPrefs,
   fetchState,
   importState,
   updateEvent,
@@ -16,7 +17,8 @@ import {
 import { eventCoversDay, MONTH_NAMES, monthGridDays } from "./dates";
 import { getSetting, loadLocal, MARKER_KEY, newMarker, saveLocal } from "./storage";
 import { hasNativeReminders, syncNativeReminders } from "./notifications";
-import type { BeachWeather, CalendarEvent, EventPayload } from "./types";
+import { DEFAULT_PREFS } from "./types";
+import type { BeachWeather, CalendarEvent, EventPayload, NotifPrefs } from "./types";
 
 interface ModalState {
   event: CalendarEvent | null;
@@ -30,6 +32,7 @@ export default function App() {
   const [selectedDay, setSelectedDay] = useState<Date>(now);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [weather, setWeather] = useState<BeachWeather[]>([]);
+  const [prefs, setPrefs] = useState<NotifPrefs>(DEFAULT_PREFS);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [tideModal, setTideModal] = useState(false);
   const [searchModal, setSearchModal] = useState(false);
@@ -100,15 +103,25 @@ export default function App() {
 
   useEffect(reloadWeather, [reloadWeather]);
 
+  // Notification preferences (morning-briefing hour, reminder lead, toggles)
+  const loadPrefs = useCallback(() => {
+    fetchPrefs()
+      .then(setPrefs)
+      .catch(() => {});
+  }, []);
+
+  useEffect(loadPrefs, [loadPrefs]);
+
   // Native iOS reminders: fetch the next two weeks and let the shell schedule
-  // local notifications for timed events. No-op outside the iOS webview.
+  // local notifications (event reminders + morning briefing). No-op outside
+  // the iOS webview.
   const syncReminders = useCallback(() => {
     if (!hasNativeReminders()) return;
     const now = Date.now();
     fetchEvents(new Date(now).toISOString(), new Date(now + 14 * 86400_000).toISOString())
-      .then(syncNativeReminders)
+      .then((evts) => syncNativeReminders(evts, weather, prefs))
       .catch(() => {});
-  }, []);
+  }, [weather, prefs]);
 
   useEffect(syncReminders, [syncReminders]);
 
@@ -232,6 +245,7 @@ export default function App() {
             setTideModal(false);
             reload();
             reloadWeather();
+            loadPrefs();
           }}
           onClose={() => setTideModal(false)}
         />

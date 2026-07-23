@@ -123,6 +123,8 @@ Puis ouvrir <http://localhost:5173>. Le dev server proxifie `/api` vers le backe
 | `GET` | `/api/weather-cities` | Catalogue des villes + sélection courante |
 | `PUT` | `/api/weather-cities` | Enregistre la sélection de villes (`{"cities": [...]}`) |
 | `GET` | `/api/calendar.ics` | Flux iCalendar (abonnement calendrier natif) |
+| `GET` | `/api/prefs` | Préférences de notification (heure du résumé, délai des rappels, activations) |
+| `PUT` | `/api/prefs` | Enregistre les préférences de notification |
 
 Corps JSON pour `POST`/`PUT` :
 
@@ -144,12 +146,13 @@ L'app iOS ([`ios/`](ios/README.md)) est une **coquille WKWebView** qui charge
 l'app web : une seule cible, aucune capacité spéciale, signature automatique
 sans étape manuelle — et chaque déploiement Heroku met l'app à jour sans
 repasser par TestFlight. Pull-to-refresh, écran de secours pour changer
-l'URL du serveur, et **notifications locales natives** : le web calcule les
-rappels (événements à heure fixe des 14 prochains jours, 15 min avant ; plus
-un résumé des marées du jour chaque matin) et le shell les planifie via
-`UNUserNotificationCenter` — sans aucun entitlement ni bundle ID
-supplémentaire. Pour des notifications *sans* l'app (marées, F1…),
-l'abonnement ICS au Calendrier natif reste l'autre option.
+l'URL du serveur, et **notifications locales natives** : rappels avant tes
+événements (délai réglable) et un **résumé du matin** (météo + marées +
+événements du jour) à l'heure de ton choix — réglés dans l'app (`GET/PUT
+/api/prefs`) et planifiés par le shell via `UNUserNotificationCenter`, sans
+aucun entitlement ni bundle ID supplémentaire. Pour des notifications *sans*
+l'app (marées, F1…), l'abonnement ICS au Calendrier natif reste l'autre
+option.
 
 Le front web est aussi une **PWA** : Safari → Partager → « Sur l'écran
 d'accueil » pour l'installer en plein écran avec son icône.
