@@ -11,6 +11,8 @@ import { DEFAULT_PREFS } from "../types";
 import type { NotifPrefs, TideSpot, WeatherCity } from "../types";
 
 interface Props {
+  voiceEnabled: boolean;
+  onVoiceChange: (on: boolean) => void;
   onSaved: () => void;
   onClose: () => void;
 }
@@ -26,7 +28,7 @@ const GROUPS: { id: TideSpot["group"]; label: string; hint?: string }[] = [
   { id: "ports", label: "🧭 Ports de référence" },
 ];
 
-export default function TideSpotsModal({ onSaved, onClose }: Props) {
+export default function TideSpotsModal({ voiceEnabled, onVoiceChange, onSaved, onClose }: Props) {
   const [spots, setSpots] = useState<TideSpot[] | null>(null);
   const [cities, setCities] = useState<WeatherCity[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -164,6 +166,18 @@ export default function TideSpotsModal({ onSaved, onClose }: Props) {
                 </option>
               ))}
             </select>
+          </label>
+        </section>
+
+        <section className="tide-group">
+          <h3>🔊 Lecture vocale</h3>
+          <label className="pref-row">
+            <input
+              type="checkbox"
+              checked={voiceEnabled}
+              onChange={(e) => onVoiceChange(e.target.checked)}
+            />
+            <span>Bouton 🔊 dans l'agenda pour écouter météo, marées et événements du jour</span>
           </label>
         </section>
         {cities && (
