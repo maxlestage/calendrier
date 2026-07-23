@@ -37,6 +37,30 @@ final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     }
 }
 
+/// Remove emojis, pictographs and symbols so the voice reads only the words
+/// (no guessing at 🎒, ♌, 🌊, ▲…). Keeps letters, digits and punctuation.
+private func speakable(_ s: String) -> String {
+    let kept = s.unicodeScalars.filter { sc in
+        switch sc.value {
+        case 0x2190...0x21FF,   // arrows
+             0x2300...0x27BF,   // misc symbols, dingbats, zodiac (♈–♓)
+             0x2B00...0x2BFF,   // misc symbols and arrows
+             0x25A0...0x25FF,   // geometric shapes (▲ ▾)
+             0xFE00...0xFE0F,   // variation selectors
+             0x20E3,            // combining keycap
+             0x1F000...0x1FAFF, // emoji & pictographs
+             0x1F1E6...0x1F1FF: // regional indicator flags
+            return false
+        default:
+            return true
+        }
+    }
+    return String(String.UnicodeScalarView(kept))
+        .components(separatedBy: .whitespaces)
+        .filter { !$0.isEmpty }
+        .joined(separator: " ")
+}
+
 /// "06:46" → "6 h 46", "19:00" → "19 h" (spoken French time).
 private func spokenTime(_ hhmm: String) -> String {
     let parts = hhmm.split(separator: ":")
@@ -89,5 +113,5 @@ func buildDaySpeech(day: Date, dayEvents: [CalendarEvent], weather: [BeachWeathe
         out.append("Événements : \(list.joined(separator: ", ")).")
     }
 
-    return out.joined(separator: " ")
+    return speakable(out.joined(separator: " "))
 }
