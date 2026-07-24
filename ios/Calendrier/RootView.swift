@@ -38,7 +38,16 @@ struct RootView: View {
             Task { await store.loadWeather() }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await store.loadWeather() } }
+            // Initial launch is handled by .task; react to later transitions.
+            guard ready else { return }
+            switch phase {
+            case .active:
+                Task { await store.onForeground() }
+            case .background:
+                Task { await store.backupLocally() }
+            default:
+                break
+            }
         }
     }
 

@@ -126,6 +126,16 @@ final class CalendarStore: ObservableObject {
         await backupLocally()
     }
 
+    /// Returning to the foreground: re-check for a server reset (the dyno may
+    /// have been wiped while the app was backgrounded), reload, and refresh
+    /// the local copy — so simply reopening the app restores everything.
+    func onForeground() async {
+        await restoreIfServerReset()
+        await load()
+        await loadWeather()
+        await backupLocally()
+    }
+
     /// Compare markers: if the server's is gone/changed, it lost its
     /// database — push the device's copy back. Ensure a marker exists.
     private func restoreIfServerReset() async {
