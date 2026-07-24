@@ -47,10 +47,23 @@
 		};
 		CA00000000000000000000C1 /* CalendrierWidget */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				CA00000000000000000000CE /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
 			path = CalendrierWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		CA00000000000000000000CE /* Exceptions for "CalendrierWidget" folder in "CalendrierWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = CA00000000000000000000C3 /* CalendrierWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		CA00000000000000000000A8 /* Frameworks */ = {
