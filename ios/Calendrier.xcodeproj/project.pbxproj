@@ -6,8 +6,37 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		CA00000000000000000000CB /* CalendrierWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CA00000000000000000000C2 /* CalendrierWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		CA00000000000000000000CD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CA00000000000000000000AA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CA00000000000000000000C3;
+			remoteInfo = CalendrierWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		CA00000000000000000000CA /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				CA00000000000000000000CB /* CalendrierWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		CA00000000000000000000A4 /* Calendrier.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Calendrier.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA00000000000000000000C2 /* CalendrierWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CalendrierWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +45,22 @@
 			path = Calendrier;
 			sourceTree = "<group>";
 		};
+		CA00000000000000000000C1 /* CalendrierWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CalendrierWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		CA00000000000000000000A8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CA00000000000000000000C5 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +74,7 @@
 			isa = PBXGroup;
 			children = (
 				CA00000000000000000000A1 /* Calendrier */,
+				CA00000000000000000000C1 /* CalendrierWidget */,
 				CA00000000000000000000A3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +83,7 @@
 			isa = PBXGroup;
 			children = (
 				CA00000000000000000000A4 /* Calendrier.app */,
+				CA00000000000000000000C2 /* CalendrierWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,10 +98,12 @@
 				CA00000000000000000000A7 /* Sources */,
 				CA00000000000000000000A8 /* Frameworks */,
 				CA00000000000000000000A9 /* Resources */,
+				CA00000000000000000000CA /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				CA00000000000000000000CC /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				CA00000000000000000000A1 /* Calendrier */,
@@ -69,6 +114,28 @@
 			productName = Calendrier;
 			productReference = CA00000000000000000000A4 /* Calendrier.app */;
 			productType = "com.apple.product-type.application";
+		};
+		CA00000000000000000000C3 /* CalendrierWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CA00000000000000000000C7 /* Build configuration list for PBXNativeTarget "CalendrierWidgetExtension" */;
+			buildPhases = (
+				CA00000000000000000000C4 /* Sources */,
+				CA00000000000000000000C5 /* Frameworks */,
+				CA00000000000000000000C6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				CA00000000000000000000C1 /* CalendrierWidget */,
+			);
+			name = CalendrierWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = CalendrierWidgetExtension;
+			productReference = CA00000000000000000000C2 /* CalendrierWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -81,6 +148,9 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					CA00000000000000000000A5 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					CA00000000000000000000C3 = {
 						CreatedOnToolsVersion = 16.0;
 					};
 				};
@@ -101,12 +171,20 @@
 			projectRoot = "";
 			targets = (
 				CA00000000000000000000A5 /* Calendrier */,
+				CA00000000000000000000C3 /* CalendrierWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		CA00000000000000000000A9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CA00000000000000000000C6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -123,7 +201,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CA00000000000000000000C4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CA00000000000000000000CC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CA00000000000000000000C3 /* CalendrierWidgetExtension */;
+			targetProxy = CA00000000000000000000CD /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		CA00000000000000000000B1 /* Debug */ = {
@@ -235,6 +328,58 @@
 			};
 			name = Release;
 		};
+		CA00000000000000000000C8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CalendrierWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Calendrier;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				PRODUCT_BUNDLE_IDENTIFIER = com.maxlestage.calendrier.CalendrierWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		CA00000000000000000000C9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CalendrierWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Calendrier;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.maxlestage.calendrier.CalendrierWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -252,6 +397,15 @@
 			buildConfigurations = (
 				CA00000000000000000000B1 /* Debug */,
 				CA00000000000000000000B2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CA00000000000000000000C7 /* Build configuration list for PBXNativeTarget "CalendrierWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CA00000000000000000000C8 /* Debug */,
+				CA00000000000000000000C9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
