@@ -109,7 +109,9 @@ private struct WeatherCardView: View {
         if let wv = day.wave { parts.append("🌊 \(String(format: "%.1f", wv)) m") }
         if let wt = day.water { parts.append("💧 \(String(format: "%.0f", wt))°") }
         if let sr = day.sunrise, let ss = day.sunset { parts.append("🌅 \(sr) · 🌇 \(ss)") }
+        if let aq = aqiInfo(day.aqi) { parts.append("\(aq.emoji) \(aq.label)") }
         if let pol = day.pollen, pol >= 20 { parts.append(pol >= 80 ? "🤧 pollen fort" : "🤧 pollen modéré") }
+        if let fr = fireRisk(tmax: day.tmax, wind: day.wind, precipMm: day.precip_mm) { parts.append(fr) }
         return parts.joined(separator: " · ")
     }
 
