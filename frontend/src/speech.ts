@@ -1,7 +1,7 @@
 import type { BeachWeather, CalendarEvent } from "./types";
 import { TIDE_COLOR } from "./types";
 import { FULL_DAY_NAMES, MONTH_NAMES, toDateKey, toTimeKey } from "./dates";
-import { weatherIcon } from "./weather";
+import { aqiInfo, fireRisk, weatherIcon } from "./weather";
 
 /** Whether the browser can speak (Web Speech API). */
 export function speechSupported(): boolean {
@@ -66,6 +66,10 @@ export function buildDaySpeech(
     let s = `${spot.name} : ${weatherIcon(d.code).label.toLowerCase()}`;
     if (d.tmax != null) s += `, ${Math.round(d.tmax)} degrés`;
     if (d.water != null) s += `, eau à ${Math.round(d.water)} degrés`;
+    const aq = aqiInfo(d.aqi);
+    if (aq) s += `, qualité de l'air ${aq.label.replace("air ", "")}`;
+    const fr = fireRisk(d);
+    if (fr) s += `, ${fr.replace("🔥 ", "")}`;
     out.push(s + ".");
   }
 

@@ -150,6 +150,10 @@ pub struct DayWeather {
     /// Worst pollen concentration of the day across species, grains/m³
     /// (air-quality API, ~4-day horizon)
     pub pollen: Option<f64>,
+    /// Worst European air-quality index of the day (0 bon … 100+ extrême)
+    pub aqi: Option<f64>,
+    /// Total precipitation of the day, mm (fire-risk input)
+    pub precip_mm: Option<f64>,
 }
 
 #[derive(Serialize, Clone)]
@@ -225,6 +229,8 @@ struct ForecastDaily {
     sunrise: Vec<Option<String>>,
     #[serde(default)]
     sunset: Vec<Option<String>>,
+    #[serde(default)]
+    precipitation_sum: Vec<Option<f64>>,
 }
 
 #[derive(Deserialize)]
@@ -305,7 +311,7 @@ pub async fn fetch(places: &[Place]) -> Vec<SpotWeather> {
         "{forecast_base}?latitude={lat}&longitude={lon}\
          &daily=weather_code,temperature_2m_max,temperature_2m_min,\
          wind_speed_10m_max,uv_index_max,precipitation_probability_max,\
-         sunrise,sunset\
+         sunrise,sunset,precipitation_sum\
          &timezone=Europe%2FParis&forecast_days={FORECAST_DAYS}"
     );
     let forecasts: Vec<ForecastResponse> = match fetch_json::<OneOrMany<ForecastResponse>>(
@@ -358,8 +364,8 @@ pub async fn fetch(places: &[Place]) -> Vec<SpotWeather> {
         }
     };
 
-    // Pollen (air-quality API, ~4-day horizon), best-effort like marine
-    let pollen_maps = fetch_pollen(&client, &lat, &lon).await;
+    // Air quality (pollen + European AQI), best-effort like marine
+    let air_maps = fetch_air(&client, &lat, &lon).await;
 
     places
         .iter()
@@ -413,10 +419,15 @@ pub async fn fetch(places: &[Place]) -> Vec<SpotWeather> {
                         water,
                         sunrise: clock(&daily.sunrise),
                         sunset: clock(&daily.sunset),
-                        pollen: pollen_maps
+                        pollen: air_maps
                             .get(i)
-                            .and_then(|m| m.get(date.as_str()))
+                            .and_then(|m| m.pollen.get(date.as_str()))
                             .copied(),
+                        aqi: air_maps
+                            .get(i)
+                            .and_then(|m| m.aqi.get(date.as_str()))
+                            .copied(),
+                        precip_mm: opt(&daily.precipitation_sum, d),
                     }
                 })
                 .collect();
@@ -464,6 +475,8 @@ struct PollenHourly {
     olive_pollen: Vec<Option<f64>>,
     #[serde(default)]
     ragweed_pollen: Vec<Option<f64>>,
+    #[serde(default)]
+    european_aqi: Vec<Option<f64>>,
 }
 
 #[derive(Deserialize)]
@@ -472,23 +485,30 @@ struct PollenResponse {
     hourly: Option<PollenHourly>,
 }
 
-/// One map per place: Paris day ("YYYY-MM-DD") → worst hourly pollen
-/// concentration of the day across all species (grains/m³).
-async fn fetch_pollen(
+/// Per-place daily maxima from the air-quality API: worst pollen and worst
+/// European AQI of each day.
+#[derive(Default, Clone)]
+struct AirMaps {
+    pollen: std::collections::HashMap<String, f64>,
+    aqi: std::collections::HashMap<String, f64>,
+}
+
+/// One AirMaps per place (Paris day → worst value), best-effort.
+async fn fetch_air(
     client: &reqwest::Client,
     lat: &str,
     lon: &str,
-) -> Vec<std::collections::HashMap<String, f64>> {
+) -> Vec<AirMaps> {
     let base = std::env::var("POLLEN_API_URL")
         .unwrap_or_else(|_| "https://air-quality-api.open-meteo.com/v1/air-quality".into());
     let url = format!(
         "{base}?latitude={lat}&longitude={lon}\
          &hourly=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,\
-         olive_pollen,ragweed_pollen\
+         olive_pollen,ragweed_pollen,european_aqi\
          &timezone=Europe%2FParis&forecast_days=4"
     );
     let Some(parsed) =
-        fetch_json::<OneOrMany<PollenResponse>>(client, &url, "Open-Meteo pollen").await
+        fetch_json::<OneOrMany<PollenResponse>>(client, &url, "Open-Meteo air quality").await
     else {
         return Vec::new();
     };
@@ -496,8 +516,8 @@ async fn fetch_pollen(
         .into_vec()
         .into_iter()
         .map(|resp| {
-            let mut map = std::collections::HashMap::new();
-            let Some(h) = resp.hourly else { return map };
+            let mut air = AirMaps::default();
+            let Some(h) = resp.hourly else { return air };
             let species = [
                 &h.alder_pollen,
                 &h.birch_pollen,
@@ -510,14 +530,20 @@ async fn fetch_pollen(
                 let Some(date) = t.get(..10) else { continue };
                 for s in species {
                     if let Some(Some(v)) = s.get(idx) {
-                        let entry = map.entry(date.to_string()).or_insert(0.0f64);
-                        if *v > *entry {
-                            *entry = *v;
+                        let e = air.pollen.entry(date.to_string()).or_insert(0.0f64);
+                        if *v > *e {
+                            *e = *v;
                         }
                     }
                 }
+                if let Some(Some(v)) = h.european_aqi.get(idx) {
+                    let e = air.aqi.entry(date.to_string()).or_insert(0.0f64);
+                    if *v > *e {
+                        *e = *v;
+                    }
+                }
             }
-            map
+            air
         })
         .collect()
 }
