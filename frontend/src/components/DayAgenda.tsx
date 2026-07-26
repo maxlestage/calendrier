@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { BeachWeather, CalendarEvent } from "../types";
 import { FULL_DAY_NAMES, MONTH_NAMES, toDateKey, toTimeKey } from "../dates";
-import { formatNumber, weatherIcon } from "../weather";
+import { aqiInfo, fireRisk, formatNumber, weatherIcon } from "../weather";
 import { buildDaySpeech, speak, speechSupported, stopSpeech } from "../speech";
 
 interface Props {
@@ -61,6 +61,8 @@ export default function DayAgenda({ day, events, weather, voiceEnabled, onEventC
                   : forecast.pollen >= 20
                     ? "🤧 pollen modéré"
                     : null;
+            const aqi = aqiInfo(forecast.aqi);
+            const fire = fireRisk(forecast);
             const details = [
               forecast.wind !== null ? `💨 ${Math.round(forecast.wind)} km/h` : null,
               forecast.uv !== null ? `UV ${formatNumber(forecast.uv)}` : null,
@@ -70,7 +72,9 @@ export default function DayAgenda({ day, events, weather, voiceEnabled, onEventC
               forecast.sunrise && forecast.sunset
                 ? `🌅 ${forecast.sunrise} · 🌇 ${forecast.sunset}`
                 : null,
+              aqi ? `${aqi.emoji} ${aqi.label}` : null,
               pollenLabel,
+              fire,
             ].filter(Boolean);
             return (
               <li key={spot.key} className="beach-weather-card" title={icon.label}>

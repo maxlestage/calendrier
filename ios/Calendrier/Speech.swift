@@ -98,6 +98,12 @@ func buildDaySpeech(day: Date, dayEvents: [CalendarEvent], weather: [BeachWeathe
         var s = "\(spot.name) : \(weatherLabel(d.code))"
         if let mx = d.tmax { s += ", \(Int(mx.rounded())) degrés" }
         if let wt = d.water { s += ", eau à \(Int(wt.rounded())) degrés" }
+        if let aq = aqiInfo(d.aqi) {
+            s += ", qualité de l'air \(aq.label.replacingOccurrences(of: "air ", with: ""))"
+        }
+        if let fr = fireRisk(tmax: d.tmax, wind: d.wind, precipMm: d.precip_mm) {
+            s += ", \(fr.replacingOccurrences(of: "🔥 ", with: ""))"
+        }
         out.append(s + ".")
     }
 

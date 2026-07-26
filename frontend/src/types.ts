@@ -55,6 +55,10 @@ export interface BeachWeatherDay {
   sunset: string | null;
   /** Worst pollen of the day, grains/m³ (≈4-day horizon) */
   pollen: number | null;
+  /** Worst European air-quality index of the day (0 bon … 100+ extrême) */
+  aqi: number | null;
+  /** Precipitation total of the day, mm (fire-risk input) */
+  precip_mm: number | null;
 }
 
 export interface BeachWeather {
