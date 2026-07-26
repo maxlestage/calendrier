@@ -75,6 +75,8 @@ struct BeachWeatherDay: Codable, Hashable {
     let sunrise: String?
     let sunset: String?
     let pollen: Double?
+    let aqi: Double?
+    let precip_mm: Double?
 }
 
 struct BeachWeather: Codable, Identifiable, Hashable {

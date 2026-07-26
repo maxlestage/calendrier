@@ -101,6 +101,35 @@ func weatherEmoji(_ code: Int?) -> String {
     }
 }
 
+/// European AQI → emoji + French label.
+func aqiInfo(_ aqi: Double?) -> (emoji: String, label: String)? {
+    guard let a = aqi else { return nil }
+    switch a {
+    case ..<20: return ("🟢", "air bon")
+    case ..<40: return ("🟡", "air moyen")
+    case ..<60: return ("🟠", "air dégradé")
+    case ..<80: return ("🔴", "air mauvais")
+    case ..<100: return ("🟣", "air très mauvais")
+    default: return ("🟤", "air extrême")
+    }
+}
+
+/// Indicative fire-risk from heat, wind and dryness — NOT an official alert.
+/// nil below "modéré".
+func fireRisk(tmax: Double?, wind: Double?, precipMm: Double?) -> String? {
+    guard let t = tmax else { return nil }
+    var p = 0
+    if t >= 32 { p += 2 } else if t >= 27 { p += 1 }
+    if let w = wind {
+        if w >= 40 { p += 2 } else if w >= 25 { p += 1 }
+    }
+    if let pr = precipMm, pr < 1 { p += 1 }
+    if p >= 4 { return "🔥 risque feu très élevé" }
+    if p >= 3 { return "🔥 risque feu élevé" }
+    if p >= 2 { return "🔥 risque feu modéré" }
+    return nil
+}
+
 /// WMO code → French label (spoken by the voice summary).
 func weatherLabel(_ code: Int?) -> String {
     guard let c = code else { return "météo" }
