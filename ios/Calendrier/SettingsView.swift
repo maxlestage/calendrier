@@ -46,7 +46,7 @@ struct SettingsView: View {
                     DisclosureGroup {
                         ForEach(cities) { c in row(c.name, selectedCities.contains(c.key)) { toggle(&selectedCities, c.key) } }
                     } label: {
-                        groupLabel("🏙️ Villes de France — météo", selectedCities.count)
+                        Text("🏙️ Villes de France — météo")
                     }
                 } footer: { Text("🎒 Les vacances scolaires suivent automatiquement la zone de tes plages et villes.") }
 
@@ -57,7 +57,7 @@ struct SettingsView: View {
                             DisclosureGroup {
                                 ForEach(inGroup) { s in row(s.name, selectedSpots.contains(s.key)) { toggle(&selectedSpots, s.key) } }
                             } label: {
-                                groupLabel(g.label, inGroup.filter { selectedSpots.contains($0.key) }.count)
+                                Text(g.label)
                             }
                         }
                     }
@@ -110,21 +110,6 @@ struct SettingsView: View {
                 }
             }
             .task { await load() }
-        }
-    }
-
-    /// Collapsible group header with a count badge of current selections.
-    private func groupLabel(_ title: String, _ count: Int) -> some View {
-        HStack {
-            Text(title)
-            Spacer()
-            if count > 0 {
-                Text("\(count)")
-                    .font(.caption).fontWeight(.semibold)
-                    .padding(.horizontal, 7).padding(.vertical, 2)
-                    .background(Capsule().fill(Color.accentColor))
-                    .foregroundStyle(.white)
-            }
         }
     }
 
