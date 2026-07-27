@@ -82,6 +82,39 @@ private func spokenTime(_ hhmm: String) -> String {
     return "\(h) h \(m)".trimmingCharacters(in: .whitespaces)
 }
 
+/// French decimal for speech: "3,5", or "4" when whole.
+private func frNum(_ v: Double) -> String {
+    let s = String(format: "%.1f", v)
+    return s.hasSuffix(".0") ? String(s.dropLast(2)) : s.replacingOccurrences(of: ".", with: ",")
+}
+
+/// Read a weather card out loud: the emoji turned into words, then every value
+/// shown on the card (temperatures, wind, UV, rain, waves, water, sun, air, …).
+private func spokenWeather(_ spot: BeachWeather, _ d: BeachWeatherDay) -> String {
+    var parts: [String] = [weatherLabel(d.code)]
+    if let mx = d.tmax { parts.append("maximum \(Int(mx.rounded())) degrés") }
+    if let mn = d.tmin { parts.append("minimum \(Int(mn.rounded())) degrés") }
+    if let w = d.wind { parts.append("vent \(Int(w.rounded())) kilomètres par heure") }
+    if let uv = d.uv { parts.append("indice UV \(frNum(uv))") }
+    if let p = d.precip { parts.append("\(Int(p.rounded())) pour cent de pluie") }
+    if let wv = d.wave { parts.append("vagues \(frNum(wv)) mètres") }
+    if let wt = d.water { parts.append("eau à \(Int(wt.rounded())) degrés") }
+    if let sr = d.sunrise, let ss = d.sunset {
+        parts.append("lever du soleil à \(spokenTime(sr)), coucher à \(spokenTime(ss))")
+    }
+    if let aq = aqiInfo(d.aqi) {
+        parts.append("qualité de l'air \(aq.label.replacingOccurrences(of: "air ", with: ""))")
+    }
+    if let pol = d.pollen {
+        if pol >= 80 { parts.append("pollen fort") }
+        else if pol >= 20 { parts.append("pollen modéré") }
+    }
+    if let fr = fireRisk(tmax: d.tmax, wind: d.wind, precipMm: d.precip_mm) {
+        parts.append(fr.replacingOccurrences(of: "🔥 ", with: ""))
+    }
+    return "\(spot.name) : \(parts.joined(separator: ", "))."
+}
+
 /// A natural spoken summary of a day: weather, tides, events.
 func buildDaySpeech(day: Date, dayEvents: [CalendarEvent], weather: [BeachWeather]) -> String {
     let fmt = DateFormatter()
@@ -93,18 +126,21 @@ func buildDaySpeech(day: Date, dayEvents: [CalendarEvent], weather: [BeachWeathe
     let mname = frMonthNames[appCalendar.component(.month, from: day) - 1].lowercased()
     var out = ["\(weekday) \(dnum) \(mname)."]
 
-    for spot in weather {
-        guard let d = spot.days.first(where: { $0.date == dateKey }) else { continue }
-        var s = "\(spot.name) : \(weatherLabel(d.code))"
-        if let mx = d.tmax { s += ", \(Int(mx.rounded())) degrés" }
-        if let wt = d.water { s += ", eau à \(Int(wt.rounded())) degrés" }
-        if let aq = aqiInfo(d.aqi) {
-            s += ", qualité de l'air \(aq.label.replacingOccurrences(of: "air ", with: ""))"
+    // Beaches and cities read as two named sections, each with its full values.
+    func forToday(_ spots: [BeachWeather]) -> [(BeachWeather, BeachWeatherDay)] {
+        spots.compactMap { spot in
+            spot.days.first(where: { $0.date == dateKey }).map { (spot, $0) }
         }
-        if let fr = fireRisk(tmax: d.tmax, wind: d.wind, precipMm: d.precip_mm) {
-            s += ", \(fr.replacingOccurrences(of: "🔥 ", with: ""))"
-        }
-        out.append(s + ".")
+    }
+    let beachWx = forToday(weather.filter { $0.group != "ville" })
+    let cityWx = forToday(weather.filter { $0.group == "ville" })
+    if !beachWx.isEmpty {
+        out.append("Météo des plages.")
+        for (spot, d) in beachWx { out.append(spokenWeather(spot, d)) }
+    }
+    if !cityWx.isEmpty {
+        out.append("Météo des villes.")
+        for (spot, d) in cityWx { out.append(spokenWeather(spot, d)) }
     }
 
     var beaches: [String: (highs: [String], lows: [String])] = [:]
