@@ -181,8 +181,14 @@ export default function TideSpotsModal({ voiceEnabled, onVoiceChange, onSaved, o
           </label>
         </section>
         {cities && (
-          <section className="tide-group">
-            <h3>🏙️ Villes de France — météo</h3>
+          <details className="tide-group tide-acc">
+            <summary>
+              <span className="acc-title">🏙️ Villes de France — météo</span>
+              {selectedCities.size > 0 && <span className="acc-count">{selectedCities.size}</span>}
+              <span className="acc-chevron" aria-hidden="true">
+                ›
+              </span>
+            </summary>
             <p className="muted small">Météo 7 jours dans l'agenda (pas de marées en ville 😉).</p>
             {chosenCities.length > 0 && (
               <div className="chips">
@@ -215,7 +221,7 @@ export default function TideSpotsModal({ voiceEnabled, onVoiceChange, onSaved, o
                 ))}
               </select>
             )}
-          </section>
+          </details>
         )}
         {spots &&
           GROUPS.map((group) => {
@@ -224,8 +230,14 @@ export default function TideSpotsModal({ voiceEnabled, onVoiceChange, onSaved, o
             const chosen = groupSpots.filter((s) => selected.has(s.key));
             const available = groupSpots.filter((s) => !selected.has(s.key));
             return (
-              <section key={group.id} className="tide-group">
-                <h3>{group.label}</h3>
+              <details key={group.id} className="tide-group tide-acc">
+                <summary>
+                  <span className="acc-title">{group.label}</span>
+                  {chosen.length > 0 && <span className="acc-count">{chosen.length}</span>}
+                  <span className="acc-chevron" aria-hidden="true">
+                    ›
+                  </span>
+                </summary>
                 {group.hint && <p className="muted small">{group.hint}</p>}
                 {chosen.length > 0 && (
                   <div className="chips">
@@ -258,7 +270,7 @@ export default function TideSpotsModal({ voiceEnabled, onVoiceChange, onSaved, o
                     ))}
                   </select>
                 )}
-              </section>
+              </details>
             );
           })}
         {error && <p className="error">{error}</p>}

@@ -589,6 +589,62 @@ button {
   margin: 0 0 6px;
 }
 
+/* Collapsible group (villes / plages / ports) — opens on click */
+.tide-acc {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 12px;
+  margin-bottom: 10px;
+}
+
+.tide-acc > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  min-height: 44px;
+}
+
+.tide-acc > summary::-webkit-details-marker {
+  display: none;
+}
+
+.acc-title {
+  flex: 1;
+}
+
+.acc-count {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 999px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+}
+
+.acc-chevron {
+  color: var(--muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.tide-acc[open] > summary .acc-chevron {
+  transform: rotate(90deg);
+}
+
+.tide-acc[open] {
+  padding-bottom: 12px;
+}
+
 .muted {
   color: var(--muted);
 }
