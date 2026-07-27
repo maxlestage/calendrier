@@ -617,19 +617,6 @@ button {
   flex: 1;
 }
 
-.acc-count {
-  background: var(--accent);
-  color: #fff;
-  border-radius: 999px;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 7px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.78rem;
-}
-
 .acc-chevron {
   color: var(--muted);
   font-size: 1.3rem;
