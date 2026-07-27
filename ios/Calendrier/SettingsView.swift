@@ -60,12 +60,21 @@ struct SettingsView: View {
                     Toggle("Bouton pour écouter la journée (météo, marées, événements)", isOn: $voiceEnabled)
                 }
 
+                if let app = URL(string: API.base) {
+                    Section {
+                        ShareLink(item: app) {
+                            Label("Partager l'accès (modifier ensemble)", systemImage: "heart.fill")
+                        }
+                    } header: { Text("👩‍❤️‍👨 Modifier ensemble (conjoint)") }
+                    footer: { Text("Envoie ce lien à ton conjoint : il ouvre la même app et vous partagez le même calendrier — chacun peut ajouter et modifier. ⚠️ Accès complet : ne le partage qu'à des personnes de confiance.") }
+                }
+
                 if let ics = URL(string: API.base + "/api/calendar.ics"),
                    let csv = URL(string: API.base + "/api/export.csv"),
                    let printURL = URL(string: API.base + "/api/print") {
-                    Section("📤 Partager / Exporter") {
+                    Section {
                         ShareLink(item: ics) {
-                            Label("Partager le lien d'abonnement", systemImage: "person.2.fill")
+                            Label("Voir seulement — lien d'abonnement", systemImage: "eye")
                         }
                         Link(destination: csv) {
                             Label("Exporter en CSV (tableur)", systemImage: "tablecells")
@@ -73,7 +82,8 @@ struct SettingsView: View {
                         Link(destination: printURL) {
                             Label("Version imprimable", systemImage: "printer")
                         }
-                    }
+                    } header: { Text("📤 Partager (lecture) / Exporter") }
+                    footer: { Text("Lien d'abonnement pour tes amis : ils l'ajoutent dans leur appli Calendrier et voient tes événements en lecture seule.") }
                 }
 
                 Section {
