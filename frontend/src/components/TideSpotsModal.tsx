@@ -1,14 +1,11 @@
 import { useEffect, useState } from "react";
 import {
-  fetchPrefs,
   fetchTideSpots,
   fetchWeatherCities,
-  savePrefs,
   saveTideSpots,
   saveWeatherCities,
 } from "../api";
-import { DEFAULT_PREFS } from "../types";
-import type { NotifPrefs, TideSpot, WeatherCity } from "../types";
+import type { TideSpot, WeatherCity } from "../types";
 
 interface Props {
   voiceEnabled: boolean;
@@ -33,7 +30,6 @@ export default function TideSpotsModal({ voiceEnabled, onVoiceChange, onSaved, o
   const [cities, setCities] = useState<WeatherCity[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectedCities, setSelectedCities] = useState<Set<string>>(new Set());
-  const [prefs, setPrefs] = useState<NotifPrefs>(DEFAULT_PREFS);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -50,9 +46,6 @@ export default function TideSpotsModal({ voiceEnabled, onVoiceChange, onSaved, o
         setSelectedCities(new Set(list.filter((c) => c.selected).map((c) => c.key)));
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));
-    fetchPrefs()
-      .then(setPrefs)
-      .catch(() => {});
   }, []);
 
   const add = (key: string) => {
@@ -88,7 +81,6 @@ export default function TideSpotsModal({ voiceEnabled, onVoiceChange, onSaved, o
       await Promise.all([
         saveTideSpots([...selected]),
         saveWeatherCities([...selectedCities]),
-        savePrefs(prefs),
       ]);
       onSaved();
     } catch (err) {
@@ -114,60 +106,6 @@ export default function TideSpotsModal({ voiceEnabled, onVoiceChange, onSaved, o
           🎒 Les vacances scolaires s'affichent automatiquement pour la zone (A/B/C, Corse) de
           chaque plage et ville sélectionnée.
         </p>
-
-        <section className="tide-group">
-          <h3>🔔 Notifications (app iOS)</h3>
-          <p className="muted small">
-            Notifications locales dans l'app iOS. Rien à faire sur le web/PWA.
-          </p>
-          <label className="pref-row">
-            <input
-              type="checkbox"
-              checked={prefs.morning_briefing}
-              onChange={(e) => setPrefs({ ...prefs, morning_briefing: e.target.checked })}
-              disabled={busy}
-            />
-            <span>☀️ Résumé du matin (météo, marées, événements du jour)</span>
-          </label>
-          <label className="pref-row">
-            <span>À</span>
-            <select
-              className="tide-select pref-inline"
-              value={prefs.morning_hour}
-              onChange={(e) => setPrefs({ ...prefs, morning_hour: Number(e.target.value) })}
-              disabled={busy || !prefs.morning_briefing}
-            >
-              {Array.from({ length: 24 }, (_, h) => (
-                <option key={h} value={h}>
-                  {String(h).padStart(2, "0")}h00
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="pref-row">
-            <input
-              type="checkbox"
-              checked={prefs.event_reminders}
-              onChange={(e) => setPrefs({ ...prefs, event_reminders: e.target.checked })}
-              disabled={busy}
-            />
-            <span>⏰ Rappel avant mes événements</span>
-          </label>
-          <label className="pref-row">
-            <select
-              className="tide-select pref-inline"
-              value={prefs.lead_min}
-              onChange={(e) => setPrefs({ ...prefs, lead_min: Number(e.target.value) })}
-              disabled={busy || !prefs.event_reminders}
-            >
-              {[0, 5, 10, 15, 30, 60, 120].map((m) => (
-                <option key={m} value={m}>
-                  {m === 0 ? "à l'heure" : `${m} min avant`}
-                </option>
-              ))}
-            </select>
-          </label>
-        </section>
 
         <section className="tide-group">
           <h3>🔊 Lecture vocale</h3>
