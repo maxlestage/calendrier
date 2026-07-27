@@ -8,6 +8,7 @@ struct RootView: View {
     @State private var editing: EditorTarget?
     @State private var showSettings = false
     @State private var showSearch = false
+    @State private var showScan = false
     @State private var ready = false
     @AppStorage("calCollapsed") private var calCollapsed = false
     @AppStorage("voiceEnabled") private var voiceEnabled = true
@@ -77,6 +78,7 @@ struct RootView: View {
         .sheet(isPresented: $showSearch) {
             SearchView(onPick: { store.select($0) }).environmentObject(store)
         }
+        .sheet(isPresented: $showScan) { ScanScheduleView().environmentObject(store) }
     }
 
     private var toolbar: some View {
@@ -90,6 +92,8 @@ struct RootView: View {
             }
             Spacer()
             Button { showSearch = true } label: { Image(systemName: "magnifyingglass") }
+                .buttonStyle(.bordered)
+            Button { showScan = true } label: { Image(systemName: "doc.viewfinder") }
                 .buttonStyle(.bordered)
             Button { showSettings = true } label: { Image(systemName: "slider.horizontal.3") }
                 .buttonStyle(.bordered)

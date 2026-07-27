@@ -47,6 +47,29 @@ struct EventPayload: Codable {
     }
 }
 
+/// A candidate event returned by /api/parse-schedule for the user to review
+/// before importing a scanned or pasted timetable.
+struct DraftEvent: Codable, Identifiable, Hashable {
+    var title: String
+    var start: String
+    var end: String
+    var allDay: Bool
+    /// Client-only: whether the user keeps this row on import.
+    var keep: Bool = true
+
+    let id = UUID()
+
+    enum CodingKeys: String, CodingKey {
+        case title, start, end
+        case allDay = "all_day"
+    }
+
+    var startDate: Date { start.isoDate ?? .distantPast }
+    var endDate: Date { end.isoDate ?? startDate }
+}
+
+struct ParseScheduleResponse: Codable { let events: [DraftEvent] }
+
 struct TideSpot: Codable, Identifiable, Hashable {
     let key: String
     let name: String
