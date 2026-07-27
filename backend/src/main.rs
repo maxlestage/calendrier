@@ -90,6 +90,9 @@ async fn main() -> std::io::Result<()> {
                     .service(handlers::get_weather_cities)
                     .service(handlers::put_weather_cities)
                     .service(handlers::calendar_ics)
+                    .service(handlers::event_ics)
+                    .service(handlers::export_csv)
+                    .service(handlers::print_html)
                     .service(handlers::get_prefs)
                     .service(handlers::put_prefs),
             );

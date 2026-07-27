@@ -463,48 +463,241 @@ pub async fn calendar_ics(db: web::Data<DatabaseConnection>) -> impl Responder {
          X-WR-TIMEZONE:Europe/Paris\r\n",
     );
     for ev in &events {
-        let compact =
-            |iso: &str| iso.replace(['-', ':'], "");
-        ics.push_str("BEGIN:VEVENT\r\n");
-        ics.push_str(&format!("UID:{}@calendrier\r\n", ev.id));
-        ics.push_str(&format!("DTSTAMP:{stamp}\r\n"));
-        if ev.all_day {
-            let (Some(d0), Some(d1)) = (
-                ics_paris_date(&ev.start, 0),
-                ics_paris_date(&ev.end, 1),
-            ) else {
-                ics.push_str("END:VEVENT\r\n");
-                continue;
-            };
-            ics.push_str(&format!("DTSTART;VALUE=DATE:{d0}\r\n"));
-            ics.push_str(&format!("DTEND;VALUE=DATE:{d1}\r\n"));
-        } else {
-            ics.push_str(&format!("DTSTART:{}\r\n", compact(&ev.start)));
-            ics.push_str(&format!("DTEND:{}\r\n", compact(&ev.end)));
-        }
-        if let Some(rule) = ev.recurrence.as_deref() {
-            let freq = match rule {
-                "weekly" => "WEEKLY",
-                "monthly" => "MONTHLY",
-                "yearly" => "YEARLY",
-                _ => "",
-            };
-            if !freq.is_empty() {
-                ics.push_str(&format!("RRULE:FREQ={freq}\r\n"));
-            }
-        }
-        ics.push_str(&format!("SUMMARY:{}\r\n", ics_escape(&ev.title)));
-        if let Some(desc) = ev.description.as_deref() {
-            if !desc.is_empty() {
-                ics.push_str(&format!("DESCRIPTION:{}\r\n", ics_escape(desc)));
-            }
-        }
-        ics.push_str("END:VEVENT\r\n");
+        push_vevent(&mut ics, ev, &stamp);
     }
     ics.push_str("END:VCALENDAR\r\n");
     HttpResponse::Ok()
         .content_type("text/calendar; charset=utf-8")
         .body(ics)
+}
+
+const ICS_HEADER: &str = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Calendrier//FR\r\n\
+     CALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:Calendrier\r\n\
+     X-WR-TIMEZONE:Europe/Paris\r\n";
+
+/// Append one VEVENT block for `ev`.
+fn push_vevent(ics: &mut String, ev: &event::Model, stamp: &str) {
+    let compact = |iso: &str| iso.replace(['-', ':'], "");
+    ics.push_str("BEGIN:VEVENT\r\n");
+    ics.push_str(&format!("UID:{}@calendrier\r\n", ev.id));
+    ics.push_str(&format!("DTSTAMP:{stamp}\r\n"));
+    if ev.all_day {
+        if let (Some(d0), Some(d1)) = (ics_paris_date(&ev.start, 0), ics_paris_date(&ev.end, 1)) {
+            ics.push_str(&format!("DTSTART;VALUE=DATE:{d0}\r\n"));
+            ics.push_str(&format!("DTEND;VALUE=DATE:{d1}\r\n"));
+        }
+    } else {
+        ics.push_str(&format!("DTSTART:{}\r\n", compact(&ev.start)));
+        ics.push_str(&format!("DTEND:{}\r\n", compact(&ev.end)));
+    }
+    if let Some(rule) = ev.recurrence.as_deref() {
+        let freq = match rule {
+            "weekly" => "WEEKLY",
+            "monthly" => "MONTHLY",
+            "yearly" => "YEARLY",
+            _ => "",
+        };
+        if !freq.is_empty() {
+            ics.push_str(&format!("RRULE:FREQ={freq}\r\n"));
+        }
+    }
+    ics.push_str(&format!("SUMMARY:{}\r\n", ics_escape(&ev.title)));
+    if let Some(desc) = ev.description.as_deref() {
+        if !desc.is_empty() {
+            ics.push_str(&format!("DESCRIPTION:{}\r\n", ics_escape(desc)));
+        }
+    }
+    ics.push_str("END:VEVENT\r\n");
+}
+
+/// A single event as a downloadable .ics — for sharing one event so someone
+/// else can add it to their own calendar.
+#[get("/events/{id}/ics")]
+pub async fn event_ics(db: web::Data<DatabaseConnection>, path: web::Path<i32>) -> impl Responder {
+    let id = path.into_inner();
+    let ev = match Event::find_by_id(id).one(db.get_ref()).await {
+        Ok(Some(ev)) => ev,
+        Ok(None) => return HttpResponse::NotFound().finish(),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .json(serde_json::json!({ "error": e.to_string() }))
+        }
+    };
+    let stamp = chrono::Utc::now().format("%Y%m%dT%H%M%SZ").to_string();
+    let mut ics = String::from(ICS_HEADER);
+    push_vevent(&mut ics, &ev, &stamp);
+    ics.push_str("END:VCALENDAR\r\n");
+    HttpResponse::Ok()
+        .content_type("text/calendar; charset=utf-8")
+        .insert_header((
+            "Content-Disposition",
+            format!("attachment; filename=\"evenement-{id}.ics\""),
+        ))
+        .body(ics)
+}
+
+// ---------------------------------------------------------------------------
+// CSV export + printable page
+
+/// Events (one-shot + recurring occurrences) overlapping [from, to], sorted.
+async fn expanded_events(
+    db: &DatabaseConnection,
+    from: chrono::DateTime<chrono::Utc>,
+    to: chrono::DateTime<chrono::Utc>,
+) -> Vec<event::Model> {
+    let from_s = from.format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let to_s = to.format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let mut out = Event::find()
+        .filter(event::Column::Recurrence.is_null())
+        .filter(event::Column::End.gte(from_s.clone()))
+        .filter(event::Column::Start.lt(to_s.clone()))
+        .all(db)
+        .await
+        .unwrap_or_default();
+    if let Ok(recurring) = Event::find()
+        .filter(event::Column::Recurrence.is_not_null())
+        .all(db)
+        .await
+    {
+        for ev in &recurring {
+            out.extend(expand_recurring(ev, Some(&from_s), Some(&to_s)));
+        }
+    }
+    out.sort_by(|a, b| a.start.cmp(&b.start));
+    out
+}
+
+fn paris_of(iso: &str) -> Option<chrono::DateTime<chrono_tz::Tz>> {
+    parse_iso(iso).map(|d| d.with_timezone(&chrono_tz::Europe::Paris))
+}
+
+/// Whole calendar as a CSV (French `;` separator + BOM so Excel reads accents).
+#[get("/export.csv")]
+pub async fn export_csv(db: web::Data<DatabaseConnection>) -> impl Responder {
+    let now = chrono::Utc::now();
+    let evs = expanded_events(
+        db.get_ref(),
+        now - chrono::Duration::days(90),
+        now + chrono::Duration::days(365),
+    )
+    .await;
+    let cell = |s: &str| format!("\"{}\"", s.replace('"', "\"\""));
+    let mut csv = String::from("\u{FEFF}Date;Début;Fin;Journée entière;Titre;Description;Répétition\r\n");
+    for ev in &evs {
+        let start = paris_of(&ev.start);
+        let date = start.map(|d| d.format("%Y-%m-%d").to_string()).unwrap_or_default();
+        let (h1, h2) = if ev.all_day {
+            (String::new(), String::new())
+        } else {
+            (
+                start.map(|d| d.format("%H:%M").to_string()).unwrap_or_default(),
+                paris_of(&ev.end).map(|d| d.format("%H:%M").to_string()).unwrap_or_default(),
+            )
+        };
+        csv.push_str(&format!(
+            "{};{};{};{};{};{};{}\r\n",
+            date,
+            h1,
+            h2,
+            if ev.all_day { "oui" } else { "non" },
+            cell(&ev.title),
+            cell(ev.description.as_deref().unwrap_or("")),
+            ev.recurrence.as_deref().unwrap_or("")
+        ));
+    }
+    HttpResponse::Ok()
+        .content_type("text/csv; charset=utf-8")
+        .insert_header(("Content-Disposition", "attachment; filename=\"calendrier.csv\""))
+        .body(csv)
+}
+
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+/// A clean, printable agenda (open in a browser → Imprimer / Enregistrer PDF).
+#[get("/print")]
+pub async fn print_html(db: web::Data<DatabaseConnection>) -> impl Responder {
+    let now = chrono::Utc::now();
+    let evs = expanded_events(
+        db.get_ref(),
+        now - chrono::Duration::days(30),
+        now + chrono::Duration::days(180),
+    )
+    .await;
+    let months = [
+        "janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
+        "septembre", "octobre", "novembre", "décembre",
+    ];
+    let days_fr = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+
+    let mut body = String::new();
+    let mut current_day = String::new();
+    for ev in &evs {
+        let Some(d) = paris_of(&ev.start) else { continue };
+        let day_key = d.format("%Y-%m-%d").to_string();
+        if day_key != current_day {
+            if !current_day.is_empty() {
+                body.push_str("</ul>");
+            }
+            current_day = day_key;
+            let wd = days_fr[d.format("%u").to_string().parse::<usize>().unwrap_or(1) - 1];
+            let m = months[(d.format("%m").to_string().parse::<usize>().unwrap_or(1)) - 1];
+            body.push_str(&format!(
+                "<h2>{} {} {} {}</h2><ul>",
+                wd,
+                d.format("%-d"),
+                m,
+                d.format("%Y")
+            ));
+        }
+        let time = if ev.all_day {
+            "journée".to_string()
+        } else {
+            d.format("%H:%M").to_string()
+        };
+        let desc = ev
+            .description
+            .as_deref()
+            .filter(|s| !s.is_empty())
+            .map(|s| format!(" — <span class=\"d\">{}</span>", html_escape(s)))
+            .unwrap_or_default();
+        body.push_str(&format!(
+            "<li><span class=\"t\">{}</span> {}{}</li>",
+            time,
+            html_escape(&ev.title),
+            desc
+        ));
+    }
+    if !current_day.is_empty() {
+        body.push_str("</ul>");
+    }
+
+    let printed = chrono::Utc::now()
+        .with_timezone(&chrono_tz::Europe::Paris)
+        .format("%d/%m/%Y");
+    let html = format!(
+        "<!doctype html><html lang=\"fr\"><head><meta charset=\"utf-8\">\
+        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
+        <title>Calendrier — impression</title><style>\
+        body{{font-family:-apple-system,system-ui,sans-serif;color:#111;max-width:720px;margin:24px auto;padding:0 16px;line-height:1.4}}\
+        h1{{font-size:1.4rem;margin:0 0 4px}}.sub{{color:#666;font-size:.85rem;margin:0 0 20px}}\
+        h2{{font-size:1rem;border-bottom:1px solid #ccc;padding-bottom:3px;margin:18px 0 6px;text-transform:capitalize}}\
+        ul{{list-style:none;padding:0;margin:0}}li{{padding:3px 0;font-size:.92rem}}\
+        .t{{display:inline-block;min-width:64px;color:#444;font-variant-numeric:tabular-nums}}\
+        .d{{color:#666}}\
+        button{{margin:0 0 16px;padding:8px 14px;font-size:1rem;border:1px solid #ccc;border-radius:8px;background:#f4f4f7;cursor:pointer}}\
+        @media print{{button{{display:none}}body{{margin:0}}}}\
+        </style></head><body>\
+        <button onclick=\"window.print()\">🖨️ Imprimer</button>\
+        <h1>Calendrier</h1><p class=\"sub\">Imprimé le {printed}</p>{body}</body></html>"
+    );
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(html)
 }
 
 // ---------------------------------------------------------------------------

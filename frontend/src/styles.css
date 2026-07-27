@@ -684,6 +684,27 @@ button {
   gap: 8px;
 }
 
+/* ---------- Share / export ---------- */
+
+.share-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.share-col .btn,
+.share-col a.btn {
+  width: 100%;
+  text-align: center;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.share-col .btn.primary {
+  color: #fff;
+}
+
 /* ---------- Larger screens ---------- */
 
 @media (min-width: 768px) {

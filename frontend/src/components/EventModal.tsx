@@ -69,6 +69,21 @@ export default function EventModal({ event, initialDate, onSave, onDelete, onClo
     }
   };
 
+  const shareEvent = async () => {
+    if (!event) return;
+    const url = `${window.location.origin}/api/events/${event.id}/ics`;
+    const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
+    if (nav.share) {
+      try {
+        await nav.share({ title: event.title, url });
+        return;
+      } catch {
+        // cancelled/unsupported → open the .ics
+      }
+    }
+    window.open(url, "_blank");
+  };
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -162,6 +177,11 @@ export default function EventModal({ event, initialDate, onSave, onDelete, onClo
             {event && (
               <button type="button" className="btn danger" onClick={remove} disabled={busy}>
                 Supprimer
+              </button>
+            )}
+            {event && (
+              <button type="button" className="btn" onClick={shareEvent} disabled={busy}>
+                Partager
               </button>
             )}
             <span className="spacer" />

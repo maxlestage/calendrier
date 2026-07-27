@@ -60,6 +60,22 @@ struct SettingsView: View {
                     Toggle("Bouton pour écouter la journée (météo, marées, événements)", isOn: $voiceEnabled)
                 }
 
+                if let ics = URL(string: API.base + "/api/calendar.ics"),
+                   let csv = URL(string: API.base + "/api/export.csv"),
+                   let printURL = URL(string: API.base + "/api/print") {
+                    Section("📤 Partager / Exporter") {
+                        ShareLink(item: ics) {
+                            Label("Partager le lien d'abonnement", systemImage: "person.2.fill")
+                        }
+                        Link(destination: csv) {
+                            Label("Exporter en CSV (tableur)", systemImage: "tablecells")
+                        }
+                        Link(destination: printURL) {
+                            Label("Version imprimable", systemImage: "printer")
+                        }
+                    }
+                }
+
                 Section {
                     TextField("https://mon-app.herokuapp.com", text: $serverURL)
                         .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()

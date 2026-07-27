@@ -58,6 +58,13 @@ struct EventEditorView: View {
                 if let error {
                     Section { Text(error).foregroundStyle(.red).font(.footnote) }
                 }
+                if let ev = existing, let url = URL(string: API.base + "/api/events/\(ev.id)/ics") {
+                    Section {
+                        ShareLink(item: url) {
+                            Label("Partager cet événement", systemImage: "square.and.arrow.up")
+                        }
+                    }
+                }
                 if existing != nil {
                     Section {
                         Button(role: .destructive) { Task { await remove() } } label: {
