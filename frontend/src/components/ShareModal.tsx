@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 const origin = window.location.origin;
+const appUrl = origin;
 const icsUrl = `${origin}/api/calendar.ics`;
 const csvUrl = `${origin}/api/export.csv`;
 const printUrl = `${origin}/api/print`;
@@ -12,21 +13,21 @@ interface Props {
 export default function ShareModal({ onClose }: Props) {
   const [note, setNote] = useState<string | null>(null);
 
-  const shareLink = async () => {
+  const share = async (title: string, url: string) => {
     const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
     if (nav.share) {
       try {
-        await nav.share({ title: "Mon calendrier", url: icsUrl });
+        await nav.share({ title, url });
         return;
       } catch {
-        // user cancelled or unsupported: fall through to copy
+        // cancelled/unsupported → copy
       }
     }
     try {
-      await navigator.clipboard.writeText(icsUrl);
+      await navigator.clipboard.writeText(url);
       setNote("Lien copié ✓");
     } catch {
-      setNote(icsUrl);
+      setNote(url);
     }
   };
 
@@ -41,15 +42,29 @@ export default function ShareModal({ onClose }: Props) {
         </div>
 
         <section className="tide-group share-col">
-          <h3>👥 Partager le calendrier</h3>
+          <h3>👩‍❤️‍👨 Modifier ensemble (conjoint)</h3>
           <p className="muted small">
-            Envoie ce lien : la personne l'ajoute dans son appli Calendrier (abonnement, lecture
-            seule) et voit tes événements, mis à jour automatiquement.
+            Envoie ce lien à ton conjoint : il ouvre la <b>même app</b> et vous partagez le même
+            calendrier — chacun peut ajouter et modifier, tout apparaît chez les deux.
           </p>
-          <button className="btn primary" onClick={shareLink}>
+          <button className="btn primary" onClick={() => share("Notre calendrier", appUrl)}>
+            Partager l'accès (modifier)
+          </button>
+          <p className="muted small">
+            ⚠️ Ce lien donne un accès complet (ajout, modification, suppression). Ne le partage
+            qu'à des personnes de confiance.
+          </p>
+        </section>
+
+        <section className="tide-group share-col">
+          <h3>👀 Voir seulement (amis)</h3>
+          <p className="muted small">
+            Lien d'abonnement : la personne l'ajoute dans son appli Calendrier et voit tes
+            événements en lecture seule (mis à jour automatiquement).
+          </p>
+          <button className="btn" onClick={() => share("Mon calendrier", icsUrl)}>
             Partager le lien d'abonnement
           </button>
-          {note && <p className="muted small">{note}</p>}
         </section>
 
         <section className="tide-group share-col">
@@ -68,6 +83,8 @@ export default function ShareModal({ onClose }: Props) {
             Ouvrir la version imprimable
           </button>
         </section>
+
+        {note && <p className="muted small">{note}</p>}
       </div>
     </div>
   );
