@@ -2,6 +2,7 @@ import type { ServerState } from "./storage";
 import type {
   BeachWeather,
   CalendarEvent,
+  DraftEvent,
   EventPayload,
   NotifPrefs,
   TideSpot,
@@ -58,6 +59,26 @@ export function updateEvent(id: number, payload: EventPayload): Promise<Calendar
 
 export function deleteEvent(id: number): Promise<void> {
   return fetch(`${BASE}/events/${id}`, { method: "DELETE" }).then((res) => handle<void>(res));
+}
+
+/** Turn the raw text of a timetable into draft events (OCR happens client-side). */
+export function parseSchedule(text: string): Promise<DraftEvent[]> {
+  return fetch(`${BASE}/parse-schedule`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  })
+    .then((res) => handle<{ events: DraftEvent[] }>(res))
+    .then((body) => body.events);
+}
+
+/** Create many events at once (importing a reviewed timetable). */
+export function createEventsBatch(events: EventPayload[]): Promise<CalendarEvent[]> {
+  return fetch(`${BASE}/events/batch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ events }),
+  }).then((res) => handle<CalendarEvent[]>(res));
 }
 
 export function fetchTideSpots(): Promise<TideSpot[]> {

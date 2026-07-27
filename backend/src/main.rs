@@ -6,6 +6,7 @@ mod f1;
 mod handlers;
 mod holidays;
 mod migration;
+mod schedule;
 mod seed;
 mod settings;
 mod state;
@@ -79,6 +80,8 @@ async fn main() -> std::io::Result<()> {
                     .service(handlers::list_events)
                     .service(handlers::get_event)
                     .service(handlers::create_event)
+                    .service(handlers::create_events_batch)
+                    .service(handlers::parse_schedule)
                     .service(handlers::update_event)
                     .service(handlers::delete_event)
                     .service(handlers::export_events)

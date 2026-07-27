@@ -79,6 +79,19 @@ struct API {
         try await send(req)
     }
 
+    /// Turn the raw text of a timetable into draft events. OCR (image → text)
+    /// happens on-device; the server does text → events.
+    static func parseSchedule(_ text: String) async throws -> [DraftEvent] {
+        try await run(try json(try url("/parse-schedule"), method: "POST", body: ["text": text]),
+                      as: ParseScheduleResponse.self).events
+    }
+
+    /// Create many events at once (importing a reviewed timetable).
+    static func createBatch(_ events: [EventPayload]) async throws -> [CalendarEvent] {
+        try await run(try json(try url("/events/batch"), method: "POST", body: ["events": events]),
+                      as: [CalendarEvent].self)
+    }
+
     // MARK: Weather / tides / cities / prefs
 
     static func beachWeather() async throws -> [BeachWeather] {

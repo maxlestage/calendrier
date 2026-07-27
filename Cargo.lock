@@ -573,6 +573,7 @@ dependencies = [
  "env_logger",
  "flate2",
  "log",
+ "regex",
  "reqwest",
  "sea-orm",
  "sea-orm-migration",
