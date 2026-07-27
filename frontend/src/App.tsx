@@ -3,6 +3,7 @@ import CalendarGrid from "./components/CalendarGrid";
 import DayAgenda from "./components/DayAgenda";
 import EventModal from "./components/EventModal";
 import SearchModal from "./components/SearchModal";
+import ShareModal from "./components/ShareModal";
 import TideSpotsModal from "./components/TideSpotsModal";
 import {
   createEvent,
@@ -36,6 +37,7 @@ export default function App() {
   const [modal, setModal] = useState<ModalState | null>(null);
   const [tideModal, setTideModal] = useState(false);
   const [searchModal, setSearchModal] = useState(false);
+  const [shareModal, setShareModal] = useState(false);
   const [calCollapsed, setCalCollapsed] = useState(() => {
     try {
       return localStorage.getItem("calCollapsed") === "1";
@@ -241,6 +243,13 @@ export default function App() {
           </button>
           <button
             className="nav-btn"
+            onClick={() => setShareModal(true)}
+            aria-label="Partager, exporter ou imprimer"
+          >
+            📤
+          </button>
+          <button
+            className="nav-btn"
             onClick={() => setTideModal(true)}
             aria-label="Choisir plages (marées) et villes (météo)"
           >
@@ -292,6 +301,7 @@ export default function App() {
           onClose={() => setSearchModal(false)}
         />
       )}
+      {shareModal && <ShareModal onClose={() => setShareModal(false)} />}
       {tideModal && (
         <TideSpotsModal
           voiceEnabled={voiceEnabled}
