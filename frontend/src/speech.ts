@@ -1,7 +1,7 @@
-import type { BeachWeather, CalendarEvent } from "./types";
+import type { BeachWeather, BeachWeatherDay, CalendarEvent } from "./types";
 import { TIDE_COLOR } from "./types";
 import { FULL_DAY_NAMES, MONTH_NAMES, toDateKey, toTimeKey } from "./dates";
-import { aqiInfo, fireRisk, weatherIcon } from "./weather";
+import { aqiInfo, fireRisk, formatNumber, weatherIcon } from "./weather";
 
 /** Whether the browser can speak (Web Speech API). */
 export function speechSupported(): boolean {
@@ -49,6 +49,29 @@ function spokenTime(hhmm: string): string {
   return `${parseInt(h, 10)} h ${m === "00" ? "" : m}`.trim();
 }
 
+/** Read a weather card out loud: the emoji turned into words, then every value
+ * shown on the card (temperatures, wind, UV, rain, waves, water, sun, air, …). */
+function spokenWeather(spot: BeachWeather, d: BeachWeatherDay): string {
+  const parts: string[] = [weatherIcon(d.code).label.toLowerCase()];
+  if (d.tmax != null) parts.push(`maximum ${Math.round(d.tmax)} degrés`);
+  if (d.tmin != null) parts.push(`minimum ${Math.round(d.tmin)} degrés`);
+  if (d.wind != null) parts.push(`vent ${Math.round(d.wind)} kilomètres par heure`);
+  if (d.uv != null) parts.push(`indice UV ${formatNumber(d.uv)}`);
+  if (d.precip != null) parts.push(`${Math.round(d.precip)} pour cent de pluie`);
+  if (d.wave != null) parts.push(`vagues ${formatNumber(d.wave)} mètres`);
+  if (d.water != null) parts.push(`eau à ${Math.round(d.water)} degrés`);
+  if (d.sunrise && d.sunset) {
+    parts.push(`lever du soleil à ${spokenTime(d.sunrise)}, coucher à ${spokenTime(d.sunset)}`);
+  }
+  const aq = aqiInfo(d.aqi);
+  if (aq) parts.push(`qualité de l'air ${aq.label.replace("air ", "")}`);
+  if (d.pollen != null && d.pollen >= 80) parts.push("pollen fort");
+  else if (d.pollen != null && d.pollen >= 20) parts.push("pollen modéré");
+  const fr = fireRisk(d);
+  if (fr) parts.push(fr.replace("🔥 ", ""));
+  return `${spot.name} : ${parts.join(", ")}.`;
+}
+
 /** A natural spoken summary of a day: weather, tides, events. */
 export function buildDaySpeech(
   day: Date,
@@ -60,17 +83,21 @@ export function buildDaySpeech(
     `${FULL_DAY_NAMES[day.getDay()]} ${day.getDate()} ${MONTH_NAMES[day.getMonth()].toLowerCase()}.`,
   ];
 
-  for (const spot of weather) {
-    const d = spot.days.find((x) => x.date === dateKey);
-    if (!d) continue;
-    let s = `${spot.name} : ${weatherIcon(d.code).label.toLowerCase()}`;
-    if (d.tmax != null) s += `, ${Math.round(d.tmax)} degrés`;
-    if (d.water != null) s += `, eau à ${Math.round(d.water)} degrés`;
-    const aq = aqiInfo(d.aqi);
-    if (aq) s += `, qualité de l'air ${aq.label.replace("air ", "")}`;
-    const fr = fireRisk(d);
-    if (fr) s += `, ${fr.replace("🔥 ", "")}`;
-    out.push(s + ".");
+  // Beaches and cities read as two named sections, each with its full values.
+  const forToday = (spots: BeachWeather[]) =>
+    spots.flatMap((spot) => {
+      const d = spot.days.find((x) => x.date === dateKey);
+      return d ? [{ spot, d }] : [];
+    });
+  const beachWx = forToday(weather.filter((s) => s.group !== "ville"));
+  const cityWx = forToday(weather.filter((s) => s.group === "ville"));
+  if (beachWx.length) {
+    out.push("Météo des plages.");
+    for (const { spot, d } of beachWx) out.push(spokenWeather(spot, d));
+  }
+  if (cityWx.length) {
+    out.push("Météo des villes.");
+    for (const { spot, d } of cityWx) out.push(spokenWeather(spot, d));
   }
 
   const beaches = new Map<string, { highs: string[]; lows: string[] }>();
