@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import CalendarGrid from "./components/CalendarGrid";
 import DayAgenda from "./components/DayAgenda";
 import EventModal from "./components/EventModal";
+import ImportModal from "./components/ImportModal";
 import SearchModal from "./components/SearchModal";
 import ShareModal from "./components/ShareModal";
 import TideSpotsModal from "./components/TideSpotsModal";
@@ -38,6 +39,7 @@ export default function App() {
   const [tideModal, setTideModal] = useState(false);
   const [searchModal, setSearchModal] = useState(false);
   const [shareModal, setShareModal] = useState(false);
+  const [importModal, setImportModal] = useState(false);
   const [calCollapsed, setCalCollapsed] = useState(() => {
     try {
       return localStorage.getItem("calCollapsed") === "1";
@@ -243,6 +245,13 @@ export default function App() {
           </button>
           <button
             className="nav-btn"
+            onClick={() => setImportModal(true)}
+            aria-label="Scanner ou importer un emploi du temps"
+          >
+            📸
+          </button>
+          <button
+            className="nav-btn"
             onClick={() => setShareModal(true)}
             aria-label="Partager, exporter ou imprimer"
           >
@@ -302,6 +311,16 @@ export default function App() {
         />
       )}
       {shareModal && <ShareModal onClose={() => setShareModal(false)} />}
+      {importModal && (
+        <ImportModal
+          onImported={() => {
+            setImportModal(false);
+            reload();
+            syncReminders();
+          }}
+          onClose={() => setImportModal(false)}
+        />
+      )}
       {tideModal && (
         <TideSpotsModal
           voiceEnabled={voiceEnabled}

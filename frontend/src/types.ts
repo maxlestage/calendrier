@@ -23,6 +23,14 @@ export interface EventPayload {
   recurrence: Recurrence;
 }
 
+/** A candidate event returned by /api/parse-schedule for the user to review. */
+export interface DraftEvent {
+  title: string;
+  start: string;
+  end: string;
+  all_day: boolean;
+}
+
 export interface TideSpot {
   key: string;
   name: string;

@@ -186,6 +186,71 @@ pub async fn create_event(
     }
 }
 
+#[derive(Deserialize)]
+pub struct BatchPayload {
+    pub events: Vec<EventPayload>,
+}
+
+/// Create several events in one call — used when importing a scanned or pasted
+/// timetable after the user has reviewed the drafts.
+#[post("/events/batch")]
+pub async fn create_events_batch(
+    db: web::Data<DatabaseConnection>,
+    snap: web::Data<Snapshot>,
+    payload: web::Json<BatchPayload>,
+) -> impl Responder {
+    let mut created = Vec::new();
+    for ev in payload.into_inner().events {
+        let recurrence = match normalize_recurrence(ev.recurrence) {
+            Ok(r) => r,
+            Err(resp) => return resp,
+        };
+        let active = event::ActiveModel {
+            title: Set(ev.title),
+            description: Set(ev.description),
+            start: Set(ev.start),
+            end: Set(ev.end),
+            all_day: Set(ev.all_day),
+            color: Set(ev.color),
+            recurrence: Set(recurrence),
+            ..Default::default()
+        };
+        match active.insert(db.get_ref()).await {
+            Ok(m) => created.push(m),
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .json(serde_json::json!({ "error": e.to_string() }))
+            }
+        }
+    }
+    snap.refresh(db.get_ref()).await;
+    HttpResponse::Created().json(created)
+}
+
+#[derive(Deserialize)]
+pub struct ParseSchedulePayload {
+    /// Raw text of the timetable (typed, pasted, or OCR'd from a photo).
+    pub text: String,
+    /// Optional "YYYY-MM-DD" anchor for weekday-only schedules; defaults to the
+    /// Monday of the current week.
+    #[serde(default)]
+    pub base_date: Option<String>,
+}
+
+/// Turn the raw text of any timetable into draft events for the user to review.
+/// The OCR (image → text) happens on the client; this does text → events.
+#[post("/parse-schedule")]
+pub async fn parse_schedule(payload: web::Json<ParseSchedulePayload>) -> impl Responder {
+    let payload = payload.into_inner();
+    let base = payload
+        .base_date
+        .as_deref()
+        .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
+        .unwrap_or_else(crate::schedule::current_paris_monday);
+    let events = crate::schedule::parse_schedule(&payload.text, base);
+    HttpResponse::Ok().json(serde_json::json!({ "events": events }))
+}
+
 #[put("/events/{id}")]
 pub async fn update_event(
     db: web::Data<DatabaseConnection>,
