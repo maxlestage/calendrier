@@ -23,6 +23,10 @@ struct SplashView: View {
                 Text("Calendrier")
                     .font(.title.weight(.bold))
 
+                Text("par Maxime Nathan Lestage")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
                 ProgressView()
                     .padding(.top, 2)
             }
