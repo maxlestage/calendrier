@@ -100,6 +100,13 @@ struct SettingsView: View {
                 footer: { Text("Adresse du backend. À changer seulement si tu héberges ta propre instance.") }
 
                 if let error { Section { Text(error).foregroundStyle(.red).font(.footnote) } }
+
+                Section {
+                    Text("Calendrier — par Maxime Nathan Lestage")
+                        .font(.footnote).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .listRowBackground(Color.clear)
+                }
             }
             .navigationTitle("Réglages")
             .navigationBarTitleDisplayMode(.inline)
