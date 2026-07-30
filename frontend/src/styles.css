@@ -632,6 +632,13 @@ button {
   padding-bottom: 12px;
 }
 
+.credits {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin: 16px 0 4px;
+}
+
 .muted {
   color: var(--muted);
 }
