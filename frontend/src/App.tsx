@@ -3,6 +3,7 @@ import CalendarGrid from "./components/CalendarGrid";
 import DayAgenda from "./components/DayAgenda";
 import EventModal from "./components/EventModal";
 import ImportModal from "./components/ImportModal";
+import MonthPickerModal from "./components/MonthPickerModal";
 import SearchModal from "./components/SearchModal";
 import ShareModal from "./components/ShareModal";
 import TideSpotsModal from "./components/TideSpotsModal";
@@ -41,6 +42,7 @@ export default function App() {
   const [searchModal, setSearchModal] = useState(false);
   const [shareModal, setShareModal] = useState(false);
   const [importModal, setImportModal] = useState(false);
+  const [monthPicker, setMonthPicker] = useState(false);
   const [calCollapsed, setCalCollapsed] = useState(() => {
     try {
       return localStorage.getItem("calCollapsed") === "1";
@@ -235,7 +237,11 @@ export default function App() {
         <button className="nav-btn" onClick={() => shiftMonth(-1)} aria-label="Mois précédent">
           ‹
         </button>
-        <button className="month-label" onClick={goToday} title="Revenir à aujourd'hui">
+        <button
+          className="month-label"
+          onClick={() => setMonthPicker(true)}
+          title="Changer de mois et d'année"
+        >
           {MONTH_NAMES[month]} {year}
         </button>
         <div className="nav-group">
@@ -314,6 +320,22 @@ export default function App() {
             selectDay(day);
           }}
           onClose={() => setSearchModal(false)}
+        />
+      )}
+      {monthPicker && (
+        <MonthPickerModal
+          year={year}
+          month={month}
+          onPick={(py, pm) => {
+            setYear(py);
+            setMonth(pm);
+            setMonthPicker(false);
+          }}
+          onToday={() => {
+            goToday();
+            setMonthPicker(false);
+          }}
+          onClose={() => setMonthPicker(false)}
         />
       )}
       {shareModal && <ShareModal onClose={() => setShareModal(false)} />}

@@ -10,6 +10,7 @@ struct RootView: View {
     @State private var showSettings = false
     @State private var showSearch = false
     @State private var showScan = false
+    @State private var showMonthPicker = false
     @State private var ready = false
     @AppStorage("calCollapsed") private var calCollapsed = false
     @AppStorage("voiceEnabled") private var voiceEnabled = true
@@ -88,6 +89,10 @@ struct RootView: View {
             SearchView(onPick: { store.select($0) }).environmentObject(store)
         }
         .sheet(isPresented: $showScan) { ScanScheduleView().environmentObject(store) }
+        .sheet(isPresented: $showMonthPicker) {
+            MonthPickerView().environmentObject(store)
+                .presentationDetents([.height(280)])
+        }
     }
 
     private var toolbar: some View {
@@ -95,7 +100,7 @@ struct RootView: View {
             Button { store.shiftMonth(-1) } label: { Image(systemName: "chevron.left") }
                 .buttonStyle(.bordered)
             Spacer()
-            Button { store.goToday() } label: {
+            Button { showMonthPicker = true } label: {
                 Text("\(frMonthNames[store.month - 1]) \(String(store.year))")
                     .font(.title3).fontWeight(.bold).foregroundStyle(.primary)
             }

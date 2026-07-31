@@ -51,6 +51,14 @@ final class CalendarStore: ObservableObject {
         Task { await load() }
     }
 
+    /// Jump to a specific month/year (from the month picker).
+    func setMonth(year: Int, month: Int) {
+        guard year != self.year || month != self.month else { return }
+        self.year = year
+        self.month = month
+        Task { await load() }
+    }
+
     func select(_ day: Date) {
         selectedDay = day
         let m = appCalendar.component(.month, from: day)
