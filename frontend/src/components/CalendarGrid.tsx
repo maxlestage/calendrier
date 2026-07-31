@@ -1,5 +1,5 @@
 import type { BeachWeather, CalendarEvent } from "../types";
-import { TIDE_COLOR } from "../types";
+import { colorBackground, STEEL, TIDE_COLOR } from "../types";
 import { DAY_NAMES, eventCoversDay, isSameDay, monthGridDays, toDateKey, toTimeKey } from "../dates";
 import { weatherIcon } from "../weather";
 
@@ -76,7 +76,11 @@ export default function CalendarGrid({
               )}
               <span className="dots">
                 {dots.map((ev) => (
-                  <span key={ev.id} className="dot" style={{ background: ev.color ?? "#4f6bed" }} />
+                  <span
+                    key={ev.id}
+                    className={`dot ${ev.color === STEEL ? "steel" : ""}`}
+                    style={{ background: colorBackground(ev.color) }}
+                  />
                 ))}
               </span>
               {tideHighs.length > 0 && (
