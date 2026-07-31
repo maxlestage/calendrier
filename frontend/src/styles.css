@@ -4,22 +4,57 @@
   box-sizing: border-box;
 }
 
-/* Dark ("inverted") theme: dark surfaces, light text — the inox chrome pops. */
+/* Light theme (default). theme.ts always writes data-theme="light"|"dark" on
+   <html>, resolving the user's choice (clair / sombre / automatique). */
 :root {
+  --border: #e2e4ea;
+  --text: #1f2430;
+  --muted: #8a90a2;
+  --accent: #5b6673; /* brushed gunmetal steel (inox theme) */
+  --bg: #f7f8fb;
+  --surface: #fff; /* cards, buttons, modals */
+  --surface-active: #eef0f6; /* pressed state */
+  --on-accent: #fff; /* text drawn on top of --accent */
+  --tide: #0277bd;
+  /* Weather cards */
+  --wx-bg: linear-gradient(135deg, #e7f4fd, #f2fbff);
+  --wx-border: #cfe7f7;
+  --wx-name: #0b4f8a;
+  --wx-details: #33566f;
+  /* Chips + errors */
+  --chip-bg: #e3f0fb;
+  --chip-text: #0b4f8a;
+  --err-text: #d93025;
+  --err-bg: #fdeceb;
+  --err-border: #f0c3c0;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  /* Native controls (date/time pickers, selects, scrollbars) follow the theme. */
+  color-scheme: light;
+}
+
+/* Dark theme: dark surfaces, light text — the inox chrome pops. */
+:root[data-theme="dark"] {
   --border: #33383f;
   --text: #eef1f5;
   --muted: #9aa2ad;
   --accent: #aeb7c2; /* light brushed steel, legible on dark */
   --bg: #0f1115;
-  --surface: #191c22; /* cards, buttons, modals */
-  --surface-active: #262b33; /* pressed state */
-  --on-accent: #14171c; /* text drawn on top of --accent */
+  --surface: #191c22;
+  --surface-active: #262b33;
+  --on-accent: #14171c;
   --tide: #4fc3f7;
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
-  /* Native controls (date/time pickers, selects, scrollbars) render dark too. */
+  --wx-bg: linear-gradient(135deg, #16232e, #101b24);
+  --wx-border: #24455c;
+  --wx-name: #7fc4ef;
+  --wx-details: #a9c2d4;
+  --chip-bg: #1c2c3a;
+  --chip-text: #8fcbf0;
+  --err-text: #ff8a80;
+  --err-bg: #3a1e1d;
+  --err-border: #6b3330;
   color-scheme: dark;
 }
 
@@ -281,8 +316,8 @@ button {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(135deg, #16232e, #101b24);
-  border: 1px solid #24455c;
+  background: var(--wx-bg);
+  border: 1px solid var(--wx-border);
   border-radius: 12px;
   padding: 10px 12px;
 }
@@ -311,7 +346,7 @@ button {
 .beach-weather-name {
   font-weight: 700;
   font-size: 0.9rem;
-  color: #7fc4ef;
+  color: var(--wx-name);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -331,7 +366,7 @@ button {
 
 .beach-weather-details {
   font-size: 0.78rem;
-  color: #a9c2d4;
+  color: var(--wx-details);
 }
 
 .agenda-list {
@@ -449,14 +484,14 @@ button {
 /* ---------- Error banner ---------- */
 
 .error {
-  color: #ff8a80;
+  color: var(--err-text);
   font-size: 0.85rem;
   margin: 4px 0;
 }
 
 .error.banner {
-  background: #3a1e1d;
-  border: 1px solid #6b3330;
+  background: var(--err-bg);
+  border: 1px solid var(--err-border);
   border-radius: 10px;
   padding: 8px 12px;
   margin: 0 0 8px;
@@ -636,8 +671,8 @@ button {
 }
 
 .btn.danger {
-  color: #ff8a80;
-  border-color: #6b3330;
+  color: var(--err-text);
+  border-color: var(--err-border);
 }
 
 .btn:disabled {
@@ -730,8 +765,8 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #1c2c3a;
-  color: #8fcbf0;
+  background: var(--chip-bg);
+  color: var(--chip-text);
   border-radius: 999px;
   padding: 5px 6px 5px 12px;
   font-size: 0.82rem;
@@ -823,6 +858,36 @@ button {
 }
 
 .share-col .btn.primary {
+  color: var(--on-accent);
+}
+
+/* ---------- Appearance (theme) picker ---------- */
+
+.theme-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.theme-btn {
+  flex: 1;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.theme-btn:active {
+  background: var(--surface-active);
+}
+
+.theme-btn.selected {
+  background: var(--accent);
+  border-color: var(--accent);
   color: var(--on-accent);
 }
 
