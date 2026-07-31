@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { BeachWeather, CalendarEvent } from "../types";
+import { colorBackground, STEEL } from "../types";
 import { FULL_DAY_NAMES, MONTH_NAMES, toDateKey, toTimeKey } from "../dates";
 import { aqiInfo, fireRisk, formatNumber, weatherIcon } from "../weather";
 import { buildDaySpeech, speak, speechSupported, stopSpeech } from "../speech";
@@ -107,7 +108,10 @@ export default function DayAgenda({ day, events, weather, voiceEnabled, onEventC
           {sorted.map((ev) => (
             <li key={`${ev.id}-${ev.start}`}>
               <button className="agenda-item" onClick={() => onEventClick(ev)}>
-                <span className="agenda-bar" style={{ background: ev.color ?? "#4f6bed" }} />
+                <span
+                  className={`agenda-bar ${ev.color === STEEL ? "steel" : ""}`}
+                  style={{ background: colorBackground(ev.color) }}
+                />
                 <span className="agenda-time">
                   {ev.all_day ? (
                     "Journée"

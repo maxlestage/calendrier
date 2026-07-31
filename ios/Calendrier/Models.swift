@@ -5,8 +5,11 @@ let tideColorHex = "#0277bd"
 /// Green the backend uses for holidays / school vacations.
 let holidayColorHex = "#2e7d32"
 
+/// Sentinel colour rendered as shiny 3D stainless steel (replaces the old violet).
+let steelHex = "#c0c6cf"
+
 /// User-palette colours offered in the event editor.
-let eventColors = ["#4f6bed", "#0f9d58", "#d93025", "#f4a300", "#8e44ad", "#0aa3a3"]
+let eventColors = ["#4f6bed", "#0f9d58", "#d93025", "#f4a300", steelHex, "#0aa3a3"]
 
 struct CalendarEvent: Codable, Identifiable, Hashable {
     let id: Int

@@ -41,6 +41,8 @@ async fn main() -> std::io::Result<()> {
     // from it, then load the last three months into the in-memory snapshot.
     backup::restore_from_env(&db).await;
     seed::seed(&db).await;
+    // Repaint any former violet events to the new stainless-steel colour.
+    seed::recolor_violet_to_steel(&db).await;
     let snapshot = web::Data::new(state::Snapshot::new());
     snapshot.refresh(&db).await;
     let weather_cache = web::Data::new(weather::WeatherCache::new());
