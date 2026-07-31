@@ -13,7 +13,10 @@ use std::collections::HashSet;
 
 use chrono::Datelike;
 use chrono_tz::Europe::Paris;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
+};
+use sea_orm::sea_query::Expr;
 use serde::Deserialize;
 
 use crate::entities::event::{self, Entity as Event};
@@ -23,6 +26,17 @@ use crate::{astro, astronomy, f1, holidays, tides, tmdb};
 /// Static baseline: curated 2026 cinema releases + the 2026 F1 season as
 /// offline fallback (fireworks/astrology entries are generated instead).
 const SEED_JSON: &str = include_str!("../seed_events.json");
+
+/// One-off migration: repaint any former violet event (old cinema colour, or
+/// events the user made violet) to the new shiny stainless-steel colour, so no
+/// violet remains even in previously stored / restored data.
+pub async fn recolor_violet_to_steel(db: &DatabaseConnection) {
+    let _ = Event::update_many()
+        .col_expr(event::Column::Color, Expr::value("#c0c6cf"))
+        .filter(event::Column::Color.eq("#8e44ad"))
+        .exec(db)
+        .await;
+}
 
 #[derive(Deserialize)]
 pub struct SeedCandidate {
