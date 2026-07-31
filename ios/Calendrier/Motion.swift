@@ -60,3 +60,24 @@ struct SteelBar: View {
             .frame(width: 4)
     }
 }
+
+/// The floating "+" button as a shiny inox disc that follows the tilt. A leaf
+/// view so only it re-renders on motion, not the whole screen.
+struct SteelFAB: View {
+    @EnvironmentObject private var motion: MotionManager
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "plus").font(.title.weight(.semibold))
+                .foregroundStyle(Color(hex: "#2a2f36"))
+                .frame(width: 56, height: 56)
+                .background(
+                    Circle()
+                        .fill(steelGradient(roll: motion.roll, pitch: motion.pitch))
+                        .overlay(Circle().strokeBorder(Color(hex: "#9aa2ad"), lineWidth: 1))
+                )
+                .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+        }
+        .padding(20)
+    }
+}
