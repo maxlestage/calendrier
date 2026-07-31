@@ -212,7 +212,7 @@ button {
 /* "Today" = shiny inox disc, reflection follows the phone tilt (--steel-*). */
 .day-number.today {
   background: linear-gradient(
-    var(--steel-angle, 135deg),
+    135deg,
     #fbfcfd,
     #d3d9e0,
     #aab2bd,
@@ -455,7 +455,7 @@ button {
   border: 1px solid #9aa2ad;
   /* Shiny inox button; reflection follows the phone tilt (--steel-*). */
   background: linear-gradient(
-    var(--steel-angle, 135deg),
+    135deg,
     #fbfcfd,
     #d3d9e0,
     #aab2bd,
@@ -616,7 +616,7 @@ button {
 .dot.steel,
 .agenda-bar.steel {
   background: linear-gradient(
-    var(--steel-angle, 135deg),
+    135deg,
     #fbfcfd,
     #d3d9e0,
     #aab2bd,
@@ -631,9 +631,6 @@ button {
     inset 0 1px 1px rgba(255, 255, 255, 0.9),
     inset 0 -2px 3px rgba(0, 0, 0, 0.35),
     0 1px 1px rgba(0, 0, 0, 0.2);
-  transition:
-    background-position 0.06s linear,
-    background-image 0.06s linear;
 }
 
 .color-dot.steel {

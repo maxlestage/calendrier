@@ -3,7 +3,10 @@ import SwiftUI
 
 struct RootView: View {
     @StateObject private var store = CalendarStore()
-    @StateObject private var motion = MotionManager.shared
+    /// Plain reference, deliberately NOT @StateObject/@ObservedObject: observing
+    /// it here would re-render the whole screen at the sensor's rate. Only the
+    /// leaf views (SteelFAB, SteelCircle, SteelBar) subscribe via @EnvironmentObject.
+    private let motion = MotionManager.shared
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var editing: EditorTarget?
