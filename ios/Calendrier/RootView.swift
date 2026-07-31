@@ -3,6 +3,7 @@ import SwiftUI
 
 struct RootView: View {
     @StateObject private var store = CalendarStore()
+    @StateObject private var motion = MotionManager.shared
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var editing: EditorTarget?
@@ -31,6 +32,7 @@ struct RootView: View {
             }
         }
         .task {
+            motion.start()
             await store.launch()
             withAnimation(.easeOut(duration: 0.4)) { ready = true }
             if await Notifications.requestAuthorization() { await store.syncNotifications() }
@@ -43,8 +45,10 @@ struct RootView: View {
             guard ready else { return }
             switch phase {
             case .active:
+                motion.start()
                 Task { await store.onForeground() }
             case .background:
+                motion.stop()
                 Task { await store.backupLocally() }
             default:
                 break
@@ -70,9 +74,12 @@ struct RootView: View {
         }
         .padding(.horizontal, 8)
         .environmentObject(store)
+        .environmentObject(motion)
         .overlay(alignment: .bottomTrailing) { fab }
         .sheet(item: $editing) { t in
-            EventEditorView(existing: t.event, initialDate: t.date).environmentObject(store)
+            EventEditorView(existing: t.event, initialDate: t.date)
+                .environmentObject(store)
+                .environmentObject(motion)
         }
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
         .sheet(isPresented: $showSearch) {
