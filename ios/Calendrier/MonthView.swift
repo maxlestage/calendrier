@@ -86,7 +86,7 @@ struct MonthView: View {
             }
             HStack(spacing: 3) {
                 ForEach(Array(dots.enumerated()), id: \.offset) { _, ev in
-                    Circle().fill(Color(hex: ev.color ?? "#4f6bed")).frame(width: 6, height: 6)
+                    Circle().fill(eventFill(ev.color)).frame(width: 6, height: 6)
                 }
             }
             .frame(height: 6)

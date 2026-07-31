@@ -6,7 +6,9 @@ use serde::Deserialize;
 
 use crate::seed::SeedCandidate;
 
-pub const CINEMA_COLOR: &str = "#8e44ad";
+/// Shiny stainless-steel ("inox") colour, rendered as a 3D metallic gradient
+/// by the clients (replaces the former violet).
+pub const CINEMA_COLOR: &str = "#c0c6cf";
 
 #[derive(Deserialize)]
 struct DiscoverResponse {

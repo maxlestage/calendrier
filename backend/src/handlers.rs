@@ -362,6 +362,8 @@ pub async fn import_state(
         }
     }
     let inserted = crate::seed::import_events(db.get_ref(), payload.events).await;
+    // A restored backup may carry the old violet colour — repaint to steel.
+    crate::seed::recolor_violet_to_steel(db.get_ref()).await;
     // The restored selection may call for tides/vacations that a blank dyno
     // never fetched
     crate::holidays::sync_vacations(db.get_ref()).await;

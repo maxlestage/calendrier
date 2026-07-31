@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { CalendarEvent, EventPayload, Recurrence } from "../types";
-import { EVENT_COLORS } from "../types";
+import { colorBackground, EVENT_COLORS, STEEL } from "../types";
 import { toDateKey, toTimeKey } from "../dates";
 
 interface Props {
@@ -165,10 +165,10 @@ export default function EventModal({ event, initialDate, onSave, onDelete, onClo
               <button
                 key={c}
                 type="button"
-                className={`color-dot ${color === c ? "selected" : ""}`}
-                style={{ background: c }}
+                className={`color-dot ${c === STEEL ? "steel" : ""} ${color === c ? "selected" : ""}`}
+                style={{ background: colorBackground(c) }}
                 onClick={() => setColor(c)}
-                aria-label={`Couleur ${c}`}
+                aria-label={c === STEEL ? "Couleur inox" : `Couleur ${c}`}
               />
             ))}
           </div>

@@ -100,11 +100,23 @@ export const DEFAULT_PREFS: NotifPrefs = {
   event_reminders: true,
 };
 
+/** Sentinel stored on events that should render as shiny 3D stainless steel. */
+export const STEEL = "#c0c6cf";
+
+/** Chrome / brushed-steel gradient used to render the STEEL colour in 3D. */
+export const STEEL_GRADIENT =
+  "linear-gradient(135deg,#fbfcfd 0%,#d3d9e0 16%,#aab2bd 38%,#7c848f 50%,#aab2bd 62%,#e2e7ed 84%,#ffffff 100%)";
+
 export const EVENT_COLORS = [
   "#4f6bed",
   "#0f9d58",
   "#d93025",
   "#f4a300",
-  "#8e44ad",
+  STEEL,
   "#0aa3a3",
 ] as const;
+
+/** CSS background for an event colour — a shiny stainless-steel gradient for STEEL. */
+export function colorBackground(color: string | null): string {
+  return color === STEEL ? STEEL_GRADIENT : (color ?? "#4f6bed");
+}

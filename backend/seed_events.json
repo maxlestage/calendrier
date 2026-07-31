@@ -22,9 +22,9 @@
   { "date": "2026-11-29", "title": "🏎️ GP du Qatar", "description": "F1 2026 — Losail", "color": "#d93025" },
   { "date": "2026-12-06", "title": "🏎️ GP d'Abu Dhabi", "description": "F1 2026 — Yas Marina, finale de la saison", "color": "#d93025" },
 
-  { "date": "2026-07-15", "title": "🎬 L'Odyssée", "description": "Sortie France — Christopher Nolan (Matt Damon, Tom Holland)", "color": "#8e44ad" },
-  { "date": "2026-07-29", "title": "🎬 Spider-Man : Brand New Day", "description": "Sortie France (2 jours avant les USA)", "color": "#8e44ad" },
-  { "date": "2026-08-05", "title": "🎬 Pat' Patrouille : le film 3", "description": "Sortie France — île aux dinosaures", "color": "#8e44ad" },
-  { "date": "2026-12-16", "title": "🎬 Avengers : Doomsday", "description": "Sortie France — Robert Downey Jr. en Docteur Doom", "color": "#8e44ad" },
-  { "date": "2026-12-16", "title": "🎬 Dune : Troisième Partie", "description": "Sortie France — conclusion de la trilogie de Denis Villeneuve", "color": "#8e44ad" }
+  { "date": "2026-07-15", "title": "🎬 L'Odyssée", "description": "Sortie France — Christopher Nolan (Matt Damon, Tom Holland)", "color": "#c0c6cf" },
+  { "date": "2026-07-29", "title": "🎬 Spider-Man : Brand New Day", "description": "Sortie France (2 jours avant les USA)", "color": "#c0c6cf" },
+  { "date": "2026-08-05", "title": "🎬 Pat' Patrouille : le film 3", "description": "Sortie France — île aux dinosaures", "color": "#c0c6cf" },
+  { "date": "2026-12-16", "title": "🎬 Avengers : Doomsday", "description": "Sortie France — Robert Downey Jr. en Docteur Doom", "color": "#c0c6cf" },
+  { "date": "2026-12-16", "title": "🎬 Dune : Troisième Partie", "description": "Sortie France — conclusion de la trilogie de Denis Villeneuve", "color": "#c0c6cf" }
 ]
