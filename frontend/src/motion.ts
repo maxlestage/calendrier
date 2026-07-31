@@ -16,20 +16,29 @@ export function initSteelMotion(): void {
 
   const root = document.documentElement;
   let raf = 0;
+  let lastX = 50;
+  let lastY = 50;
 
   const onOrient = (e: DeviceOrientationEvent) => {
     const gamma = e.gamma ?? 0; // left/right tilt  (-90…90)
     const beta = e.beta ?? 0; //  front/back tilt (-180…180)
-    if (raf) return; // throttle to one update per frame
+    const x = clamp(50 + gamma * 0.8, 0, 100);
+    const y = clamp(50 + (beta - 45) * 0.6, 0, 100);
+    // A phone held still still emits jitter; writing a custom property on
+    // :root restyles the whole document, so ignore imperceptible moves.
+    if (Math.abs(x - lastX) < 0.5 && Math.abs(y - lastY) < 0.5) return;
+    if (raf) return; // at most one update per frame
     raf = requestAnimationFrame(() => {
       raf = 0;
-      root.style.setProperty("--steel-angle", `${135 + gamma * 0.9}deg`);
-      root.style.setProperty("--steel-x", `${clamp(50 + gamma * 0.8, 0, 100)}%`);
-      root.style.setProperty("--steel-y", `${clamp(50 + (beta - 45) * 0.6, 0, 100)}%`);
+      lastX = x;
+      lastY = y;
+      root.style.setProperty("--steel-x", `${x}%`);
+      root.style.setProperty("--steel-y", `${y}%`);
     });
   };
 
-  const attach = () => window.addEventListener("deviceorientation", onOrient, true);
+  const attach = () =>
+    window.addEventListener("deviceorientation", onOrient, { passive: true });
 
   const DOE = window.DeviceOrientationEvent as unknown as {
     requestPermission?: () => Promise<"granted" | "denied">;

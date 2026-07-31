@@ -51,11 +51,21 @@ final class CalendarStore: ObservableObject {
         Task { await load() }
     }
 
-    /// Jump to a specific month/year (from the month picker).
+    /// Jump to a specific month/year (from the month picker). The selection
+    /// moves with it — today when landing on the current month, otherwise the
+    /// 1st — so the agenda below never shows a day outside the visible month.
     func setMonth(year: Int, month: Int) {
         guard year != self.year || month != self.month else { return }
         self.year = year
         self.month = month
+        let now = Date()
+        if appCalendar.component(.year, from: now) == year,
+           appCalendar.component(.month, from: now) == month {
+            selectedDay = now
+        } else {
+            var c = DateComponents(); c.year = year; c.month = month; c.day = 1
+            if let first = appCalendar.date(from: c) { selectedDay = first }
+        }
         Task { await load() }
     }
 
