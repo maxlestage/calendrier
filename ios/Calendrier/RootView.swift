@@ -73,9 +73,11 @@ struct RootView: View {
             )
         }
         .padding(.horizontal, 8)
+        .overlay(alignment: .bottomTrailing) {
+            SteelFAB { editing = EditorTarget(id: "new", event: nil, date: store.selectedDay) }
+        }
         .environmentObject(store)
         .environmentObject(motion)
-        .overlay(alignment: .bottomTrailing) { fab }
         .sheet(item: $editing) { t in
             EventEditorView(existing: t.event, initialDate: t.date)
                 .environmentObject(store)
@@ -110,17 +112,6 @@ struct RootView: View {
         .padding(.top, 4)
     }
 
-    private var fab: some View {
-        Button {
-            editing = EditorTarget(id: "new", event: nil, date: store.selectedDay)
-        } label: {
-            Image(systemName: "plus").font(.title.weight(.semibold)).foregroundStyle(.white)
-                .frame(width: 56, height: 56)
-                .background(Circle().fill(Color.accentColor))
-                .shadow(color: Color.accentColor.opacity(0.4), radius: 8, y: 4)
-        }
-        .padding(20)
-    }
 }
 
 #Preview {
