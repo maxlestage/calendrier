@@ -329,6 +329,11 @@ export default function App() {
           onPick={(py, pm) => {
             setYear(py);
             setMonth(pm);
+            // Move the selection into the month we land on (today when it's the
+            // current month), so the agenda never shows a day outside the grid.
+            const now = new Date();
+            const sameMonth = now.getFullYear() === py && now.getMonth() === pm;
+            setSelectedDay(sameMonth ? now : new Date(py, pm, 1));
             setMonthPicker(false);
           }}
           onToday={() => {

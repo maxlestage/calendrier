@@ -13,9 +13,15 @@ final class MotionManager: ObservableObject {
 
     func start() {
         guard mgr.isDeviceMotionAvailable, !mgr.isDeviceMotionActive else { return }
-        mgr.deviceMotionUpdateInterval = 1.0 / 30.0
+        // 15 Hz is plenty for a subtle reflection and halves the sensor work.
+        mgr.deviceMotionUpdateInterval = 1.0 / 15.0
         mgr.startDeviceMotionUpdates(to: .main) { [weak self] motion, _ in
             guard let self, let m = motion else { return }
+            // Only publish meaningful movement: a phone lying still still emits
+            // jitter, and every publish re-renders the steel views.
+            let dr = m.attitude.roll - self.roll
+            let dp = m.attitude.pitch - self.pitch
+            guard abs(dr) > 0.02 || abs(dp) > 0.02 else { return }
             self.roll = m.attitude.roll
             self.pitch = m.attitude.pitch
         }
