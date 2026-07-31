@@ -538,14 +538,30 @@ button {
   border-color: var(--text);
 }
 
-/* Shiny 3D stainless-steel look for the "inox" colour (swatch, dots, bars) */
+/* Shiny 3D stainless-steel look for the "inox" colour (swatch, dots, bars).
+   The reflection follows the phone's tilt via --steel-* (see motion.ts). */
 .color-dot.steel,
 .dot.steel,
 .agenda-bar.steel {
+  background: linear-gradient(
+    var(--steel-angle, 135deg),
+    #fbfcfd,
+    #d3d9e0,
+    #aab2bd,
+    #7c848f,
+    #aab2bd,
+    #e2e7ed,
+    #ffffff
+  );
+  background-size: 220% 220%;
+  background-position: var(--steel-x, 50%) var(--steel-y, 50%);
   box-shadow:
     inset 0 1px 1px rgba(255, 255, 255, 0.9),
     inset 0 -2px 3px rgba(0, 0, 0, 0.35),
     0 1px 1px rgba(0, 0, 0, 0.2);
+  transition:
+    background-position 0.06s linear,
+    background-image 0.06s linear;
 }
 
 .color-dot.steel {

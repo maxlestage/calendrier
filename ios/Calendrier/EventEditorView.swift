@@ -37,12 +37,18 @@ struct EventEditorView: View {
                 Section("Couleur") {
                     HStack(spacing: 12) {
                         ForEach(eventColors, id: \.self) { c in
-                            Circle().fill(eventFill(c)).frame(width: 30, height: 30)
-                                .overlay {
-                                    if c == steelHex { Circle().strokeBorder(Color(hex: "#9aa2ad"), lineWidth: 1) }
+                            Group {
+                                if c == steelHex {
+                                    SteelCircle(size: 30)
+                                } else {
+                                    Circle().fill(Color(hex: c)).frame(width: 30, height: 30)
                                 }
-                                .overlay { if c == color { Circle().strokeBorder(.primary, lineWidth: 3) } }
-                                .onTapGesture { color = c }
+                            }
+                            .overlay {
+                                if c == steelHex { Circle().strokeBorder(Color(hex: "#9aa2ad"), lineWidth: 1) }
+                            }
+                            .overlay { if c == color { Circle().strokeBorder(.primary, lineWidth: 3) } }
+                            .onTapGesture { color = c }
                         }
                     }
                 }

@@ -81,20 +81,6 @@ extension Color {
     }
 }
 
-/// Shiny 3D stainless-steel gradient used to render the "inox" event colour.
-let steelGradient = LinearGradient(
-    colors: [
-        Color(hex: "#fbfcfd"), Color(hex: "#d3d9e0"), Color(hex: "#aab2bd"),
-        Color(hex: "#7c848f"), Color(hex: "#aab2bd"), Color(hex: "#e2e7ed"),
-        Color(hex: "#ffffff"),
-    ],
-    startPoint: .topLeading, endPoint: .bottomTrailing
-)
-
-/// Fill for an event colour — the steel gradient for the inox sentinel, else the hex.
-func eventFill(_ hex: String?) -> AnyShapeStyle {
-    hex == steelHex ? AnyShapeStyle(steelGradient) : AnyShapeStyle(Color(hex: hex ?? "#4f6bed"))
-}
 
 // MARK: - Weather (WMO code → emoji)
 

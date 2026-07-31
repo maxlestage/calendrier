@@ -77,8 +77,12 @@ private struct EventRow: View {
     let ev: CalendarEvent
     var body: some View {
         HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(eventFill(ev.color)).frame(width: 4)
+            if ev.color == steelHex {
+                SteelBar()
+            } else {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(hex: ev.color ?? "#4f6bed")).frame(width: 4)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 (Text(ev.title) + Text(ev.recurrence != nil ? " 🔁" : "").foregroundColor(.secondary))
                     .font(.callout).fontWeight(.semibold)
