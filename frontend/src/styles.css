@@ -8,7 +8,7 @@
   --border: #e2e4ea;
   --text: #1f2430;
   --muted: #8a90a2;
-  --accent: #4f6bed;
+  --accent: #5b6673; /* brushed gunmetal steel (inox theme) */
   --bg: #f7f8fb;
   --tide: #0277bd;
   --safe-top: env(safe-area-inset-top, 0px);
@@ -168,9 +168,25 @@ button {
   border-radius: 50%;
 }
 
+/* "Today" = shiny inox disc, reflection follows the phone tilt (--steel-*). */
 .day-number.today {
-  background: var(--accent);
-  color: #fff;
+  background: linear-gradient(
+    var(--steel-angle, 135deg),
+    #fbfcfd,
+    #d3d9e0,
+    #aab2bd,
+    #7c848f,
+    #aab2bd,
+    #e2e7ed,
+    #ffffff
+  );
+  background-size: 220% 220%;
+  background-position: var(--steel-x, 50%) var(--steel-y, 50%);
+  color: #2a2f36;
+  border: 1px solid #9aa2ad;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.3);
 }
 
 .dots {
@@ -395,18 +411,33 @@ button {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  border: none;
-  background: var(--accent);
-  color: #fff;
+  border: 1px solid #9aa2ad;
+  /* Shiny inox button; reflection follows the phone tilt (--steel-*). */
+  background: linear-gradient(
+    var(--steel-angle, 135deg),
+    #fbfcfd,
+    #d3d9e0,
+    #aab2bd,
+    #7c848f,
+    #aab2bd,
+    #e2e7ed,
+    #ffffff
+  );
+  background-size: 220% 220%;
+  background-position: var(--steel-x, 50%) var(--steel-y, 50%);
+  color: #2a2f36;
   font-size: 2rem;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 6px 18px rgba(79, 107, 237, 0.45);
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.85),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.3);
   z-index: 5;
 }
 
 .fab:active {
-  background: #3d57d6;
+  filter: brightness(0.95);
 }
 
 /* ---------- Error banner ---------- */

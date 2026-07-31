@@ -70,10 +70,13 @@ struct MonthView: View {
 
         VStack(spacing: 3) {
             ZStack {
-                if isToday { Circle().fill(Color.accentColor).frame(width: 30, height: 30) }
+                if isToday {
+                    SteelCircle(size: 30)
+                        .overlay(Circle().strokeBorder(Color(hex: "#9aa2ad"), lineWidth: 1))
+                }
                 Text("\(appCalendar.component(.day, from: day))")
                     .font(.callout).fontWeight(.semibold)
-                    .foregroundStyle(isToday ? .white : (inMonth ? .primary : .secondary))
+                    .foregroundStyle(isToday ? Color(hex: "#2a2f36") : (inMonth ? .primary : .secondary))
                     .frame(width: 30, height: 30)
                     .overlay {
                         if isSelected && !isToday {
