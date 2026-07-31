@@ -15,12 +15,21 @@ mod tmdb;
 mod weather;
 
 use actix_cors::Cors;
-use actix_files::{Files, NamedFile};
+use actix_files::Files;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::{web, App, HttpServer};
 use migration::Migrator;
 use sea_orm::Database;
 use sea_orm_migration::MigratorTrait;
+
+/// The SPA shell (index.html) as an HTML response with `Cache-Control: no-cache`
+/// so browsers always revalidate it and pick up new deploys immediately.
+fn shell_response(html: &str) -> actix_web::HttpResponse {
+    actix_web::HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .insert_header((actix_web::http::header::CACHE_CONTROL, "no-cache"))
+        .body(html.to_owned())
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -57,7 +66,9 @@ async fn main() -> std::io::Result<()> {
     // backend serves the SPA itself so a single process serves everything.
     let static_dir =
         std::env::var("STATIC_DIR").unwrap_or_else(|_| "frontend/dist".into());
-    let serve_static = std::path::Path::new(&static_dir).join("index.html").exists();
+    let index_html: Option<String> =
+        std::fs::read_to_string(std::path::Path::new(&static_dir).join("index.html")).ok();
+    let serve_static = index_html.is_some();
     if serve_static {
         log::info!("serving frontend from {static_dir}");
     } else {
@@ -71,6 +82,7 @@ async fn main() -> std::io::Result<()> {
         let db_data = db_data.clone();
         let snapshot = snapshot.clone();
         let weather_cache = weather_cache.clone();
+        let index_html = index_html.clone();
         HttpServer::new(move || {
         let mut app = App::new()
             .app_data(db_data.clone())
@@ -101,22 +113,35 @@ async fn main() -> std::io::Result<()> {
                     .service(handlers::get_prefs)
                     .service(handlers::put_prefs),
             );
-        if serve_static {
-            let index = std::path::Path::new(&static_dir).join("index.html");
-            app = app.service(
-                Files::new("/", &static_dir)
-                    .index_file("index.html")
-                    // SPA fallback: unknown paths get index.html
-                    .default_handler(move |req: ServiceRequest| {
-                        let index = index.clone();
+        if let Some(html) = index_html.clone() {
+            // The HTML shell must never be cached, or phones keep serving a stale
+            // app (old colours/code) after a deploy. It's served from memory with
+            // Cache-Control: no-cache for "/" and every SPA route; hashed assets
+            // under /assets/ change name each build, so they stay cacheable.
+            let root_get = html.clone();
+            let root_head = html.clone();
+            let spa_html = html;
+            app = app
+                .service(
+                    web::resource("/")
+                        .route(web::get().to(move || {
+                            let body = root_get.clone();
+                            async move { shell_response(&body) }
+                        }))
+                        .route(web::head().to(move || {
+                            let body = root_head.clone();
+                            async move { shell_response(&body) }
+                        })),
+                )
+                .service(
+                    Files::new("/", &static_dir).default_handler(move |req: ServiceRequest| {
+                        let body = spa_html.clone();
                         async move {
                             let (req, _) = req.into_parts();
-                            let file = NamedFile::open_async(index).await?;
-                            let res = file.into_response(&req);
-                            Ok(ServiceResponse::new(req, res))
+                            Ok(ServiceResponse::new(req, shell_response(&body)))
                         }
                     }),
-            );
+                );
         }
         app
         })
