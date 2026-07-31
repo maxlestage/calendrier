@@ -4,17 +4,23 @@
   box-sizing: border-box;
 }
 
+/* Dark ("inverted") theme: dark surfaces, light text — the inox chrome pops. */
 :root {
-  --border: #e2e4ea;
-  --text: #1f2430;
-  --muted: #8a90a2;
-  --accent: #5b6673; /* brushed gunmetal steel (inox theme) */
-  --bg: #f7f8fb;
-  --tide: #0277bd;
+  --border: #33383f;
+  --text: #eef1f5;
+  --muted: #9aa2ad;
+  --accent: #aeb7c2; /* light brushed steel, legible on dark */
+  --bg: #0f1115;
+  --surface: #191c22; /* cards, buttons, modals */
+  --surface-active: #262b33; /* pressed state */
+  --on-accent: #14171c; /* text drawn on top of --accent */
+  --tide: #4fc3f7;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
+  /* Native controls (date/time pickers, selects, scrollbars) render dark too. */
+  color-scheme: dark;
 }
 
 html,
@@ -59,7 +65,7 @@ button {
 
 .nav-btn {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   border-radius: 12px;
   width: 44px;
   height: 44px;
@@ -70,7 +76,7 @@ button {
 }
 
 .nav-btn:active {
-  background: #eef0f6;
+  background: var(--surface-active);
 }
 
 .nav-group {
@@ -91,7 +97,7 @@ button {
 /* ---------- Month grid ---------- */
 
 .calendar {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 16px;
   overflow: hidden;
@@ -123,7 +129,7 @@ button {
   width: 100%;
   border: none;
   border-top: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 600;
@@ -132,7 +138,7 @@ button {
 }
 
 .cal-toggle:active {
-  background: #eef0f6;
+  background: var(--surface-active);
 }
 
 .cell {
@@ -247,7 +253,7 @@ button {
 
 .voice-btn {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   border-radius: 10px;
   width: 40px;
   height: 40px;
@@ -258,7 +264,7 @@ button {
 }
 
 .voice-btn:active {
-  background: #eef0f6;
+  background: var(--surface-active);
 }
 
 /* Beach weather cards (top of the day agenda) */
@@ -275,8 +281,8 @@ button {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(135deg, #e7f4fd, #f2fbff);
-  border: 1px solid #cfe7f7;
+  background: linear-gradient(135deg, #16232e, #101b24);
+  border: 1px solid #24455c;
   border-radius: 12px;
   padding: 10px 12px;
 }
@@ -305,7 +311,7 @@ button {
 .beach-weather-name {
   font-weight: 700;
   font-size: 0.9rem;
-  color: #0b4f8a;
+  color: #7fc4ef;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -325,7 +331,7 @@ button {
 
 .beach-weather-details {
   font-size: 0.78rem;
-  color: #33566f;
+  color: #a9c2d4;
 }
 
 .agenda-list {
@@ -342,7 +348,7 @@ button {
   display: flex;
   align-items: stretch;
   gap: 10px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 10px 12px;
@@ -352,7 +358,7 @@ button {
 }
 
 .agenda-item:active {
-  background: #eef0f6;
+  background: var(--surface-active);
 }
 
 .agenda-bar {
@@ -443,14 +449,14 @@ button {
 /* ---------- Error banner ---------- */
 
 .error {
-  color: #d93025;
+  color: #ff8a80;
   font-size: 0.85rem;
   margin: 4px 0;
 }
 
 .error.banner {
-  background: #fdeceb;
-  border: 1px solid #f0c3c0;
+  background: #3a1e1d;
+  border: 1px solid #6b3330;
   border-radius: 10px;
   padding: 8px 12px;
   margin: 0 0 8px;
@@ -469,7 +475,7 @@ button {
 }
 
 .modal {
-  background: #fff;
+  background: var(--surface);
   border-radius: 20px 20px 0 0;
   width: 100%;
   max-width: 640px;
@@ -611,7 +617,7 @@ button {
 
 .btn {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   border-radius: 10px;
   padding: 12px 16px;
   font-size: 0.95rem;
@@ -620,18 +626,18 @@ button {
 }
 
 .btn:active {
-  background: #eef0f6;
+  background: var(--surface-active);
 }
 
 .btn.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .btn.danger {
-  color: #d93025;
-  border-color: #f0c3c0;
+  color: #ff8a80;
+  border-color: #6b3330;
 }
 
 .btn:disabled {
@@ -724,8 +730,8 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #e3f0fb;
-  color: #0b4f8a;
+  background: #1c2c3a;
+  color: #8fcbf0;
   border-radius: 999px;
   padding: 5px 6px 5px 12px;
   font-size: 0.82rem;
@@ -750,7 +756,7 @@ button {
   padding: 12px;
   font-size: 1rem;
   font-family: inherit;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
 }
 
@@ -817,7 +823,7 @@ button {
 }
 
 .share-col .btn.primary {
-  color: #fff;
+  color: var(--on-accent);
 }
 
 /* ---------- Month / year picker ---------- */
@@ -847,7 +853,7 @@ button {
 
 .month-cell {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   border-radius: 10px;
   padding: 12px 4px;
   font-size: 0.95rem;
@@ -856,13 +862,13 @@ button {
 }
 
 .month-cell:active {
-  background: #eef0f6;
+  background: var(--surface-active);
 }
 
 .month-cell.selected {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 /* ---------- Import / scan a timetable ---------- */
