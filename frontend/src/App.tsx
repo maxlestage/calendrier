@@ -19,6 +19,7 @@ import {
 import { eventCoversDay, MONTH_NAMES, monthGridDays } from "./dates";
 import { getSetting, loadLocal, MARKER_KEY, newMarker, saveLocal } from "./storage";
 import { hasNativeReminders, syncNativeReminders } from "./notifications";
+import { initSteelMotion } from "./motion";
 import { DEFAULT_PREFS } from "./types";
 import type { BeachWeather, CalendarEvent, EventPayload, NotifPrefs } from "./types";
 
@@ -94,6 +95,11 @@ export default function App() {
   }, [from, to]);
 
   useEffect(reload, [reload]);
+
+  // Make the "inox" reflection follow the phone's tilt (gyroscope).
+  useEffect(() => {
+    initSteelMotion();
+  }, []);
 
   // Device safety net: if the server rebooted with an empty database (its
   // backup marker is gone), push the phone's local copy back, then make
