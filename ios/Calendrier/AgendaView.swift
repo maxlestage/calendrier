@@ -104,6 +104,12 @@ private struct EventRow: View {
 private struct WeatherCardView: View {
     let spot: BeachWeather
     let day: BeachWeatherDay
+    @Environment(\.colorScheme) private var scheme
+
+    private var isDark: Bool { scheme == .dark }
+    private var cardBG: Color { Color(hex: isDark ? "#16232e" : "#e7f4fd") }
+    private var nameColor: Color { Color(hex: isDark ? "#7fc4ef" : "#0b4f8a") }
+    private var detailColor: Color { Color(hex: isDark ? "#a9c2d4" : "#33566f") }
 
     private var details: String {
         var parts: [String] = []
@@ -125,7 +131,7 @@ private struct WeatherCardView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text("\(spot.group == "ville" ? "🏙️" : "🏖️") \(spot.name)")
-                        .font(.callout).fontWeight(.bold).foregroundStyle(Color(hex: "#7fc4ef"))
+                        .font(.callout).fontWeight(.bold).foregroundStyle(nameColor)
                     Spacer()
                     if let mx = day.tmax {
                         (Text("\(Int(mx.rounded()))°").fontWeight(.bold)
@@ -134,12 +140,12 @@ private struct WeatherCardView: View {
                     }
                 }
                 if !details.isEmpty {
-                    Text(details).font(.caption).foregroundStyle(Color(hex: "#a9c2d4"))
+                    Text(details).font(.caption).foregroundStyle(detailColor)
                 }
             }
         }
         .padding(10)
         .frame(maxWidth: .infinity)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color(hex: "#16232e")))
+        .background(RoundedRectangle(cornerRadius: 12).fill(cardBG))
     }
 }
