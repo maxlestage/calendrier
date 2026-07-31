@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var prefs: NotifPrefs = .fallback
     @AppStorage("serverURL") private var serverURL = API.defaultBase
     @AppStorage("voiceEnabled") private var voiceEnabled = true
+    @AppStorage("themePref") private var themeRaw = ThemePref.auto.rawValue
     @State private var loaded = false
     @State private var busy = false
     @State private var error: String?
@@ -62,6 +63,16 @@ struct SettingsView: View {
                         }
                     }
                 } header: { Text("🌊 Plages & ports — marées") }
+
+                Section {
+                    Picker("Thème", selection: $themeRaw) {
+                        ForEach(ThemePref.allCases) { t in
+                            Text(t.label).tag(t.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                } header: { Text("🎨 Apparence") }
+                footer: { Text("« Automatique » suit le réglage clair/sombre de ton iPhone.") }
 
                 Section("🔊 Lecture vocale") {
                     Toggle("Bouton pour écouter la journée (météo, marées, événements)", isOn: $voiceEnabled)
