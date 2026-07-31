@@ -9,6 +9,8 @@ import {
 } from "../api";
 import { DEFAULT_PREFS } from "../types";
 import type { NotifPrefs, TideSpot, WeatherCity } from "../types";
+import { getThemePref, setThemePref } from "../theme";
+import type { ThemePref } from "../theme";
 
 interface Props {
   voiceEnabled: boolean;
@@ -36,6 +38,12 @@ export default function TideSpotsModal({ voiceEnabled, onVoiceChange, onSaved, o
   const [prefs, setPrefs] = useState<NotifPrefs>(DEFAULT_PREFS);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [theme, setTheme] = useState<ThemePref>(getThemePref);
+
+  const chooseTheme = (pref: ThemePref) => {
+    setTheme(pref);
+    setThemePref(pref); // applies immediately, no save needed
+  };
 
   useEffect(() => {
     fetchTideSpots()
@@ -167,6 +175,31 @@ export default function TideSpotsModal({ voiceEnabled, onVoiceChange, onSaved, o
               ))}
             </select>
           </label>
+        </section>
+
+        <section className="tide-group">
+          <h3>🎨 Apparence</h3>
+          <div className="theme-row">
+            {(
+              [
+                ["auto", "🌗 Automatique"],
+                ["light", "☀️ Clair"],
+                ["dark", "🌙 Sombre"],
+              ] as [ThemePref, string][]
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                className={`theme-btn ${theme === value ? "selected" : ""}`}
+                onClick={() => chooseTheme(value)}
+                aria-pressed={theme === value}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="muted small">
+            « Automatique » suit le réglage clair/sombre de ton téléphone.
+          </p>
         </section>
 
         <section className="tide-group">
