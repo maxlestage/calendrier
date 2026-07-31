@@ -125,7 +125,7 @@ private struct WeatherCardView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text("\(spot.group == "ville" ? "🏙️" : "🏖️") \(spot.name)")
-                        .font(.callout).fontWeight(.bold).foregroundStyle(Color(hex: "#0b4f8a"))
+                        .font(.callout).fontWeight(.bold).foregroundStyle(Color(hex: "#7fc4ef"))
                     Spacer()
                     if let mx = day.tmax {
                         (Text("\(Int(mx.rounded()))°").fontWeight(.bold)
@@ -134,12 +134,12 @@ private struct WeatherCardView: View {
                     }
                 }
                 if !details.isEmpty {
-                    Text(details).font(.caption).foregroundStyle(Color(hex: "#33566f"))
+                    Text(details).font(.caption).foregroundStyle(Color(hex: "#a9c2d4"))
                 }
             }
         }
         .padding(10)
         .frame(maxWidth: .infinity)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color(hex: "#e7f4fd")))
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color(hex: "#16232e")))
     }
 }

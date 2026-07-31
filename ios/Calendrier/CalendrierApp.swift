@@ -4,7 +4,9 @@ import SwiftUI
 struct CalendrierApp: App {
     var body: some Scene {
         WindowGroup {
-            RootView()
+            // Inverted ("dark") look everywhere, sheets included — the inox
+            // chrome reads best on dark surfaces.
+            RootView().preferredColorScheme(.dark)
         }
     }
 }
