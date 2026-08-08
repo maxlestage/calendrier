@@ -36,11 +36,11 @@ final class CalendarStore: ObservableObject {
 
     func shiftMonth(_ delta: Int) {
         var comps = DateComponents(); comps.year = year; comps.month = month + delta; comps.day = 1
-        if let d = appCalendar.date(from: comps) {
-            year = appCalendar.component(.year, from: d)
-            month = appCalendar.component(.month, from: d)
-        }
-        Task { await load() }
+        guard let d = appCalendar.date(from: comps) else { return }
+        setMonth(
+            year: appCalendar.component(.year, from: d),
+            month: appCalendar.component(.month, from: d)
+        )
     }
 
     func goToday() {
@@ -51,9 +51,10 @@ final class CalendarStore: ObservableObject {
         Task { await load() }
     }
 
-    /// Jump to a specific month/year (from the month picker). The selection
-    /// moves with it — today when landing on the current month, otherwise the
-    /// 1st — so the agenda below never shows a day outside the visible month.
+    /// Show a specific month/year (month picker, or the ‹ › arrows). The
+    /// selection moves with it — today when landing on the current month,
+    /// otherwise the 1st — so the header, the collapsed week and the agenda
+    /// always describe the same month.
     func setMonth(year: Int, month: Int) {
         guard year != self.year || month != self.month else { return }
         self.year = year
