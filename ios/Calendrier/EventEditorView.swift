@@ -45,7 +45,7 @@ struct EventEditorView: View {
                                 }
                             }
                             .overlay {
-                                if c == steelHex { Circle().strokeBorder(Color(hex: "#9aa2ad"), lineWidth: 1) }
+                                if c == steelHex { Circle().strokeBorder(steelEdge, lineWidth: 1) }
                             }
                             .overlay { if c == color { Circle().strokeBorder(.primary, lineWidth: 3) } }
                             .onTapGesture { color = c }

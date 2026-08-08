@@ -72,11 +72,11 @@ struct MonthView: View {
             ZStack {
                 if isToday {
                     SteelCircle(size: 30)
-                        .overlay(Circle().strokeBorder(Color(hex: "#9aa2ad"), lineWidth: 1))
+                        .overlay(Circle().strokeBorder(steelEdge, lineWidth: 1))
                 }
                 Text("\(appCalendar.component(.day, from: day))")
                     .font(.callout).fontWeight(.semibold)
-                    .foregroundStyle(isToday ? Color(hex: "#2a2f36") : (inMonth ? .primary : .secondary))
+                    .foregroundStyle(isToday ? steelInk : (inMonth ? .primary : .secondary))
                     .frame(width: 30, height: 30)
                     .overlay {
                         if isSelected && !isToday {
