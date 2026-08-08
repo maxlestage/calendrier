@@ -246,6 +246,28 @@ mod tests {
         );
     }
 
+    /// The seeding horizon now spans a decade, so the algorithm must still be
+    /// right far from today. Landmark eclipses from the NASA five-millennium
+    /// catalogue, one per type.
+    #[test]
+    fn far_future_eclipses_match_nasa_catalog() {
+        let expected = [
+            (2028, "2028-07-22", "☀️ Éclipse solaire totale"),
+            (2028, "2028-12-31", "🌙 Éclipse totale de Lune"),
+            (2030, "2030-06-01", "☀️ Éclipse solaire annulaire"),
+            (2031, "2031-11-14", "☀️ Éclipse solaire hybride"),
+            (2033, "2033-03-30", "☀️ Éclipse solaire totale"),
+            (2035, "2035-09-02", "☀️ Éclipse solaire totale"),
+        ];
+        for (year, date, title) in expected {
+            let events = eclipses(year);
+            assert!(
+                events.iter().any(|e| e.date == date && e.title == title),
+                "missing {title} on {date}"
+            );
+        }
+    }
+
     #[test]
     fn total_solar_eclipse_2027_found() {
         // The famous long total eclipse over Luxor on 2027-08-02

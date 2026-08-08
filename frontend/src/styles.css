@@ -16,6 +16,10 @@
   --surface-active: #eef0f6; /* pressed state */
   --on-accent: #fff; /* text drawn on top of --accent */
   --tide: #0277bd;
+  /* Inox: dark chrome with a bright sweep (see motion.ts for --steel-x/y). */
+  --steel-stops: #202429, #3a4149, #5c656f, #e8edf2, #5c656f, #434a53, #191d21;
+  --steel-ink: #f2f5f8; /* text/glyph drawn on steel */
+  --steel-edge: #4a525c; /* steel border */
   /* Weather cards */
   --wx-bg: linear-gradient(135deg, #e7f4fd, #f2fbff);
   --wx-border: #cfe7f7;
@@ -211,23 +215,14 @@ button {
 
 /* "Today" = shiny inox disc, reflection follows the phone tilt (--steel-*). */
 .day-number.today {
-  background: linear-gradient(
-    135deg,
-    #fbfcfd,
-    #d3d9e0,
-    #aab2bd,
-    #7c848f,
-    #aab2bd,
-    #e2e7ed,
-    #ffffff
-  );
+  background: linear-gradient(135deg, var(--steel-stops));
   background-size: 220% 220%;
   background-position: var(--steel-x, 50%) var(--steel-y, 50%);
-  color: #2a2f36;
-  border: 1px solid #9aa2ad;
+  color: var(--steel-ink);
+  border: 1px solid var(--steel-edge);
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.9),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.3);
+    inset 0 -1px 1px rgba(255, 255, 255, 0.45),
+    inset 0 2px 3px rgba(0, 0, 0, 0.55);
 }
 
 .dots {
@@ -452,28 +447,19 @@ button {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  border: 1px solid #9aa2ad;
+  border: 1px solid var(--steel-edge);
   /* Shiny inox button; reflection follows the phone tilt (--steel-*). */
-  background: linear-gradient(
-    135deg,
-    #fbfcfd,
-    #d3d9e0,
-    #aab2bd,
-    #7c848f,
-    #aab2bd,
-    #e2e7ed,
-    #ffffff
-  );
+  background: linear-gradient(135deg, var(--steel-stops));
   background-size: 220% 220%;
   background-position: var(--steel-x, 50%) var(--steel-y, 50%);
-  color: #2a2f36;
+  color: var(--steel-ink);
   font-size: 2rem;
   line-height: 1;
   cursor: pointer;
   box-shadow:
     0 6px 18px rgba(0, 0, 0, 0.35),
-    inset 0 1px 1px rgba(255, 255, 255, 0.85),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.3);
+    inset 0 -1px 1px rgba(255, 255, 255, 0.45),
+    inset 0 2px 3px rgba(0, 0, 0, 0.55);
   z-index: 5;
 }
 
@@ -615,26 +601,17 @@ button {
 .color-dot.steel,
 .dot.steel,
 .agenda-bar.steel {
-  background: linear-gradient(
-    135deg,
-    #fbfcfd,
-    #d3d9e0,
-    #aab2bd,
-    #7c848f,
-    #aab2bd,
-    #e2e7ed,
-    #ffffff
-  );
+  background: linear-gradient(135deg, var(--steel-stops));
   background-size: 220% 220%;
   background-position: var(--steel-x, 50%) var(--steel-y, 50%);
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.9),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.35),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.45),
+    inset 0 2px 3px rgba(0, 0, 0, 0.55),
     0 1px 1px rgba(0, 0, 0, 0.2);
 }
 
 .color-dot.steel {
-  border-color: #9aa2ad;
+  border-color: var(--steel-edge);
 }
 
 .color-dot.steel.selected {
