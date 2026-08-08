@@ -30,15 +30,19 @@ final class MotionManager: ObservableObject {
     func stop() { mgr.stopDeviceMotionUpdates() }
 }
 
+/// Glyph drawn on top of steel, and the steel border colour.
+let steelInk = Color(hex: "#f2f5f8")
+let steelEdge = Color(hex: "#4a525c")
+
 /// Stainless-steel gradient whose light sweep is driven by the device tilt.
 func steelGradient(roll: Double, pitch: Double) -> LinearGradient {
     let dx = max(-1.0, min(1.0, roll / 1.2))
     let dy = max(-1.0, min(1.0, (pitch - 0.6) / 1.2))
     return LinearGradient(
         colors: [
-            Color(hex: "#fbfcfd"), Color(hex: "#d3d9e0"), Color(hex: "#aab2bd"),
-            Color(hex: "#7c848f"), Color(hex: "#aab2bd"), Color(hex: "#e2e7ed"),
-            Color(hex: "#ffffff"),
+            Color(hex: "#202429"), Color(hex: "#3a4149"), Color(hex: "#5c656f"),
+            Color(hex: "#e8edf2"), Color(hex: "#5c656f"), Color(hex: "#434a53"),
+            Color(hex: "#191d21"),
         ],
         startPoint: UnitPoint(x: 0.5 - dx * 0.5, y: 0.5 - dy * 0.5),
         endPoint: UnitPoint(x: 0.5 + dx * 0.5, y: 0.5 + dy * 0.5)
@@ -75,12 +79,12 @@ struct SteelFAB: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "plus").font(.title.weight(.semibold))
-                .foregroundStyle(Color(hex: "#2a2f36"))
+                .foregroundStyle(steelInk)
                 .frame(width: 56, height: 56)
                 .background(
                     Circle()
                         .fill(steelGradient(roll: motion.roll, pitch: motion.pitch))
-                        .overlay(Circle().strokeBorder(Color(hex: "#9aa2ad"), lineWidth: 1))
+                        .overlay(Circle().strokeBorder(steelEdge, lineWidth: 1))
                 )
                 .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
         }

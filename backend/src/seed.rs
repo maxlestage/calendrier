@@ -27,6 +27,9 @@ use crate::{astro, astronomy, f1, holidays, tides, tmdb};
 /// offline fallback (fireworks/astrology entries are generated instead).
 const SEED_JSON: &str = include_str!("../seed_events.json");
 
+/// How many years ahead eclipses are generated (see the seeding loop).
+const ECLIPSE_HORIZON_YEARS: i32 = 10;
+
 /// One-off migration: repaint any former violet event (old cinema colour, or
 /// events the user made violet) to the new shiny stainless-steel colour, so no
 /// violet remains even in previously stored / restored data.
@@ -102,13 +105,17 @@ pub async fn seed(db: &DatabaseConnection) {
         candidates.extend(astro::seasons(y));
         candidates.extend(astro::moon_phases(y));
         candidates.extend(astro::fireworks(y));
-        candidates.extend(astronomy::eclipses(y));
         candidates.extend(astronomy::solstices_equinoxes(y));
         candidates.extend(astronomy::meteor_showers(y));
         candidates.extend(holidays::public_holidays(y));
         if let Some(races) = f1::fetch(y).await {
             candidates.extend(races);
         }
+    }
+    // Eclipses are rare one-off events people plan trips around, so they get a
+    // much longer horizon than the yearly recurring entries above.
+    for y in year..=year + ECLIPSE_HORIZON_YEARS {
+        candidates.extend(astronomy::eclipses(y));
     }
     // Vacation zones follow the selected beaches/cities automatically
     for zone in holidays::auto_zones(db).await {
