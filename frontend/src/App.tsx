@@ -175,10 +175,19 @@ export default function App() {
 
   useEffect(syncReminders, [syncReminders]);
 
+  /** Show a month, moving the selection into it (today when it's the current
+   *  month, otherwise the 1st) so the header, grid and agenda always agree. */
+  const showMonth = (y: number, m: number) => {
+    setYear(y);
+    setMonth(m);
+    const now = new Date();
+    const isCurrent = now.getFullYear() === y && now.getMonth() === m;
+    setSelectedDay(isCurrent ? now : new Date(y, m, 1));
+  };
+
   const shiftMonth = (delta: number) => {
     const d = new Date(year, month + delta, 1);
-    setYear(d.getFullYear());
-    setMonth(d.getMonth());
+    showMonth(d.getFullYear(), d.getMonth());
   };
 
   const goToday = () => {
@@ -327,13 +336,7 @@ export default function App() {
           year={year}
           month={month}
           onPick={(py, pm) => {
-            setYear(py);
-            setMonth(pm);
-            // Move the selection into the month we land on (today when it's the
-            // current month), so the agenda never shows a day outside the grid.
-            const now = new Date();
-            const sameMonth = now.getFullYear() === py && now.getMonth() === pm;
-            setSelectedDay(sameMonth ? now : new Date(py, pm, 1));
+            showMonth(py, pm);
             setMonthPicker(false);
           }}
           onToday={() => {
