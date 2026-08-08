@@ -104,13 +104,18 @@ struct RootView: View {
                 .buttonStyle(.bordered)
             Spacer()
             Button { showMonthPicker = true } label: {
-                Text("\(frMonthNames[store.month - 1]) \(String(store.year))")
-                    .font(.title3).fontWeight(.bold).foregroundStyle(.primary)
-                    // Without these the crowded toolbar squeezes the title down
-                    // to one character per line instead of shrinking it.
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .fixedSize(horizontal: false, vertical: true)
+                // Month and year on their own lines: each is a single word, so
+                // long names ("Septembre", "Décembre") always fit whole. Written
+                // as one string it was squeezed to one letter per line by the
+                // crowded toolbar; lineLimit(1) per word makes that impossible.
+                VStack(spacing: -2) {
+                    Text(frMonthNames[store.month - 1])
+                    Text(String(store.year))
+                }
+                .font(.title3).fontWeight(.bold).foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .fixedSize(horizontal: false, vertical: true)
             }
             .layoutPriority(1)
             Spacer()

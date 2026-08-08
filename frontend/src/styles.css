@@ -98,6 +98,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 4px 4px 10px;
 }
@@ -133,7 +134,7 @@ button {
   padding: 8px 4px;
   /* Wrap on the space ("Septembre" / "2026") rather than pushing the buttons
      off screen. overflow-wrap stays `normal` so a word is never split mid-way. */
-  min-width: 0;
+  flex: 1 1 auto;
   overflow-wrap: normal;
   word-break: normal;
   line-height: 1.15;
