@@ -106,7 +106,13 @@ struct RootView: View {
             Button { showMonthPicker = true } label: {
                 Text("\(frMonthNames[store.month - 1]) \(String(store.year))")
                     .font(.title3).fontWeight(.bold).foregroundStyle(.primary)
+                    // Without these the crowded toolbar squeezes the title down
+                    // to one character per line instead of shrinking it.
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .layoutPriority(1)
             Spacer()
             Button { showSearch = true } label: { Image(systemName: "magnifyingglass") }
                 .buttonStyle(.bordered)
@@ -117,6 +123,9 @@ struct RootView: View {
             Button { store.shiftMonth(1) } label: { Image(systemName: "chevron.right") }
                 .buttonStyle(.bordered)
         }
+        // Five icon buttons plus the title is tight on a phone: smaller controls
+        // keep everything on one line.
+        .controlSize(.small)
         .padding(.top, 4)
     }
 

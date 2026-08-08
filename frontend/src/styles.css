@@ -98,7 +98,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   padding: 4px 4px 10px;
 }
 
@@ -106,9 +106,9 @@ button {
   border: 1px solid var(--border);
   background: var(--surface);
   border-radius: 12px;
-  width: 44px;
-  height: 44px;
-  font-size: 1.4rem;
+  width: 40px;
+  height: 40px;
+  font-size: 1.25rem;
   line-height: 1;
   cursor: pointer;
   flex-shrink: 0;
@@ -120,16 +120,24 @@ button {
 
 .nav-group {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .month-label {
   border: none;
   background: none;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 700;
   cursor: pointer;
-  padding: 8px 12px;
+  padding: 8px 4px;
+  /* Wrap on the space ("Septembre" / "2026") rather than pushing the buttons
+     off screen. overflow-wrap stays `normal` so a word is never split mid-way. */
+  min-width: 0;
+  overflow-wrap: normal;
+  word-break: normal;
+  line-height: 1.15;
+  text-align: center;
   text-transform: capitalize;
 }
 
