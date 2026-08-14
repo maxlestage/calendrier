@@ -56,6 +56,23 @@ async fn main() -> std::io::Result<()> {
     snapshot.refresh(&db).await;
     let weather_cache = web::Data::new(weather::WeatherCache::new());
 
+    // High and low tides must never run out. Seeding only ran at startup, so a
+    // long-lived process lost a day of coverage per day until tides stopped
+    // appearing; this keeps the rolling window topped up on its own.
+    {
+        let db = db.clone();
+        let snapshot = snapshot.clone();
+        tokio::spawn(async move {
+            let every = std::time::Duration::from_secs(6 * 3600);
+            loop {
+                tokio::time::sleep(every).await;
+                if seed::refresh_tides(&db).await > 0 {
+                    snapshot.refresh(&db).await;
+                }
+            }
+        });
+    }
+
     let host = std::env::var("HOST").unwrap_or_else(|_| "0.0.0.0".into());
     let port: u16 = std::env::var("PORT")
         .ok()
