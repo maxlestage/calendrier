@@ -140,16 +140,31 @@ pub async fn selected_ports(db: &sea_orm::DatabaseConnection) -> Vec<&'static Po
     ports_for_tokens(&selected_tokens(db).await)
 }
 
+/// Default horizon for the active source.
+///
+/// - **Open-Meteo (keyless)**: 10 days — as far as the marine model actually
+///   publishes sea level. It accepts `forecast_days` up to 16, but days 11-16
+///   come back entirely null, so asking for more only wastes a request.
+/// - **WorldTides**: 90 days. Extremes are astronomical predictions, so the
+///   range is not capped by a weather model. Since the refresh threshold is
+///   half the horizon, this works out at roughly eight calls per port per
+///   year — a long calendar view for very little quota.
+fn default_horizon_days(has_worldtides_key: bool) -> i64 {
+    if has_worldtides_key {
+        90
+    } else {
+        10
+    }
+}
+
 /// Days of tides requested per API call (bounds quota usage).
+/// Override with TIDE_DAYS.
 pub fn horizon_days() -> i64 {
     std::env::var("TIDE_DAYS")
         .ok()
         .and_then(|v| v.parse().ok())
         .filter(|d| *d > 0 && *d <= 365)
-        // 10 = as far as the keyless marine model actually publishes sea
-        // level. It accepts forecast_days up to 16, but days 11-16 come back
-        // entirely null, so asking for more only wastes a request.
-        .unwrap_or(10)
+        .unwrap_or_else(|| default_horizon_days(std::env::var("WORLDTIDES_API_KEY").is_ok()))
 }
 
 #[derive(Deserialize)]
@@ -382,4 +397,31 @@ async fn fetch_openmeteo(ports: &[&Port], start_unix: i64) -> Vec<SeedCandidate>
         log::info!("computed {found} tide extremes for {} (Open-Meteo)", port.name);
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn horizon_follows_the_active_source() {
+        // Keyless: the marine model only publishes 10 days of sea level.
+        assert_eq!(default_horizon_days(false), 10);
+        // With a WorldTides key the horizon is astronomical, not weather-bound,
+        // so the calendar can show months ahead.
+        assert!(default_horizon_days(true) >= 90);
+        assert!(default_horizon_days(true) > default_horizon_days(false));
+    }
+
+    /// The seed refreshes a port once its stored horizon drops below half the
+    /// window, so the window must be wide enough that this stays infrequent.
+    #[test]
+    fn refresh_threshold_stays_infrequent_with_worldtides() {
+        let horizon = default_horizon_days(true);
+        let refresh_after = horizon - (horizon / 2 + 1);
+        assert!(
+            refresh_after >= 30,
+            "would refetch every {refresh_after} days, too costly in quota"
+        );
+    }
 }
