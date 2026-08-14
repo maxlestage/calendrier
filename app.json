@@ -30,7 +30,11 @@
       "required": false
     },
     "WORLDTIDES_API_KEY": {
-      "description": "Clé API WorldTides (worldtides.info) : ajoute les marées (pleines/basses mers, heures et hauteurs) pour Brest, Saint-Malo, La Rochelle et Nice. Sans clé, pas de marées.",
+      "description": "Clé API WorldTides (worldtides.info) : marées officielles (SHOM/FES) sur un horizon de 90 jours. Sans clé, les marées viennent d'une source gratuite sans inscription, limitée à 10 jours à l'avance.",
+      "required": false
+    },
+    "TIDE_DAYS": {
+      "description": "Facultatif : nombre de jours de marées demandés par appel (1-365). Par défaut 90 avec une clé WorldTides, 10 sans (la limite de la source gratuite). Augmenter consomme plus de quota WorldTides.",
       "required": false
     }
   }
