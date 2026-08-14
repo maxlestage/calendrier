@@ -365,10 +365,13 @@ pub async fn import_state(
     // A restored backup may carry the old violet colour — repaint to steel.
     crate::seed::recolor_violet_to_steel(db.get_ref()).await;
     // The restored selection may call for tides/vacations that a blank dyno
-    // never fetched
+    // never fetched. Tides matter most here: a reset wipes the chosen spots,
+    // so nothing is fetched until the phone restores them — and without this
+    // the calendar would then wait for the next periodic top-up.
     crate::holidays::sync_vacations(db.get_ref()).await;
+    let tides_added = crate::seed::refresh_tides(db.get_ref()).await;
     snap.refresh(db.get_ref()).await;
-    log::info!("device restore: {inserted} events, {settings_set} settings");
+    log::info!("device restore: {inserted} events, {settings_set} settings, {tides_added} tides");
     HttpResponse::Ok().json(serde_json::json!({
         "events_inserted": inserted,
         "settings_set": settings_set,
