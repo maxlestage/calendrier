@@ -15,7 +15,10 @@
 //!
 //! Because each WorldTides call consumes quota, the seed layer only asks
 //! for ports whose stored horizon is running low (see `seed`), and the
-//! fetched window is bounded by TIDE_DAYS (default 14 days).
+//! fetched window is bounded by TIDE_DAYS (default 10 days — as far as the
+//! keyless marine model publishes sea level; WorldTides reaches further).
+//! A background task tops the window up so coverage never drains — see
+//! `seed::refresh_tides`.
 
 use serde::Deserialize;
 
@@ -143,7 +146,10 @@ pub fn horizon_days() -> i64 {
         .ok()
         .and_then(|v| v.parse().ok())
         .filter(|d| *d > 0 && *d <= 365)
-        .unwrap_or(14)
+        // 10 = as far as the keyless marine model actually publishes sea
+        // level. It accepts forecast_days up to 16, but days 11-16 come back
+        // entirely null, so asking for more only wastes a request.
+        .unwrap_or(10)
 }
 
 #[derive(Deserialize)]

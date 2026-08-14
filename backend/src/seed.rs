@@ -9,7 +9,7 @@
 //! Events older than the three-month retention window are not (re)inserted.
 //! Set SEED_DISABLED=1 to turn all of this off.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use chrono::Datelike;
 use chrono_tz::Europe::Paris;
@@ -139,7 +139,7 @@ pub async fn seed(db: &DatabaseConnection) {
     let mut f1_dates: HashSet<String> = HashSet::new();
     // Latest stored tide instant per port name, to avoid re-querying the
     // (quota-limited) tide API while the horizon is still comfortable.
-    let mut tide_horizon: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let mut tide_horizon: HashMap<String, String> = HashMap::new();
     for ev in &existing {
         if ev.start.len() >= 10 {
             seen_titles.insert((normalize(&ev.title), dedup_slot(&ev.start, ev.all_day)));
@@ -165,9 +165,48 @@ pub async fn seed(db: &DatabaseConnection) {
         }
     }
 
-    // Fetch tides only for the user-selected spots whose stored horizon runs
-    // out within the next half-window (keeps API usage low: roughly one
-    // refresh per horizon).
+    candidates.extend(due_tide_events(db, &tide_horizon).await);
+
+    let inserted = insert_candidates(db, candidates, &mut seen_titles, &mut f1_dates).await;
+    if inserted > 0 {
+        log::info!("seeded {inserted} themed events");
+    }
+}
+
+/// Latest stored tide instant per port name, i.e. how far ahead each selected
+/// spot is already covered.
+async fn stored_tide_horizon(db: &DatabaseConnection) -> HashMap<String, String> {
+    let mut horizon: HashMap<String, String> = HashMap::new();
+    let Ok(events) = Event::find()
+        .filter(event::Column::Color.eq(tides::TIDE_COLOR))
+        .all(db)
+        .await
+    else {
+        return horizon;
+    };
+    for ev in &events {
+        // "🌊 Brest — Pleine mer" → port name before the em dash
+        if let Some(port) = ev.title.split(" — ").next() {
+            let port = port.trim_start_matches('🌊').trim().to_string();
+            horizon
+                .entry(port)
+                .and_modify(|cur| {
+                    if ev.start > *cur {
+                        *cur = ev.start.clone();
+                    }
+                })
+                .or_insert_with(|| ev.start.clone());
+        }
+    }
+    horizon
+}
+
+/// Tide events for the selected spots whose stored horizon runs out within the
+/// next half-window (keeps API usage low: roughly one refresh per horizon).
+async fn due_tide_events(
+    db: &DatabaseConnection,
+    tide_horizon: &HashMap<String, String>,
+) -> Vec<SeedCandidate> {
     let now = chrono::Utc::now();
     let refresh_before = (now + chrono::Duration::days(tides::horizon_days() / 2 + 1))
         .format("%Y-%m-%dT%H:%M:%SZ")
@@ -182,15 +221,39 @@ pub async fn seed(db: &DatabaseConnection) {
                 .unwrap_or(true)
         })
         .collect();
-    if !ports_needing.is_empty() {
-        let tide_events = tides::fetch(&ports_needing, now.timestamp()).await;
-        candidates.extend(tide_events);
+    if ports_needing.is_empty() {
+        return Vec::new();
     }
+    tides::fetch(&ports_needing, now.timestamp()).await
+}
 
+/// Top up tides without re-running the whole seed. Seeding only ran at startup,
+/// so a long-lived process lost a day of coverage per day until high/low tides
+/// stopped appearing altogether. Called periodically from `main`.
+pub async fn refresh_tides(db: &DatabaseConnection) -> usize {
+    let horizon = stored_tide_horizon(db).await;
+    let candidates = due_tide_events(db, &horizon).await;
+    if candidates.is_empty() {
+        return 0;
+    }
+    let existing = match Event::find().all(db).await {
+        Ok(events) => events,
+        Err(e) => {
+            log::warn!("tide refresh: could not list events: {e}");
+            return 0;
+        }
+    };
+    let mut seen_titles: HashSet<(String, String)> = existing
+        .iter()
+        .filter(|ev| ev.start.len() >= 10)
+        .map(|ev| (normalize(&ev.title), dedup_slot(&ev.start, ev.all_day)))
+        .collect();
+    let mut f1_dates: HashSet<String> = HashSet::new();
     let inserted = insert_candidates(db, candidates, &mut seen_titles, &mut f1_dates).await;
     if inserted > 0 {
-        log::info!("seeded {inserted} themed events");
+        log::info!("tide refresh: {inserted} new tide events");
     }
+    inserted
 }
 
 /// Insert candidates against a pre-built dedup index. Used by the startup
