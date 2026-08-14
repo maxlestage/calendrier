@@ -164,7 +164,7 @@ pub fn horizon_days() -> i64 {
         .ok()
         .and_then(|v| v.parse().ok())
         .filter(|d| *d > 0 && *d <= 365)
-        .unwrap_or_else(|| default_horizon_days(std::env::var("WORLDTIDES_API_KEY").is_ok()))
+        .unwrap_or_else(|| default_horizon_days(worldtides_key().is_some()))
 }
 
 #[derive(Deserialize)]
@@ -185,16 +185,34 @@ struct Extreme {
     kind: String,
 }
 
+/// The WorldTides key, or None when unset *or blank*. A config var declared
+/// in app.json but left empty reads back as `Ok("")`, which must count as
+/// "no key" — otherwise every request goes to WorldTides with an empty key.
+pub fn worldtides_key() -> Option<String> {
+    std::env::var("WORLDTIDES_API_KEY")
+        .ok()
+        .map(|k| k.trim().to_string())
+        .filter(|k| !k.is_empty())
+}
+
 /// Fetch tides for the given ports: WorldTides when a key is configured,
-/// otherwise the keyless Open-Meteo fallback. Empty when every request fails.
+/// otherwise the keyless Open-Meteo fallback.
+///
+/// A configured key that returns nothing (blank, invalid, or out of quota)
+/// must not leave the calendar with no tides at all, so we fall back to the
+/// free source rather than giving up.
 pub async fn fetch(ports: &[&Port], start_unix: i64) -> Vec<SeedCandidate> {
     if ports.is_empty() {
         return Vec::new();
     }
-    match std::env::var("WORLDTIDES_API_KEY") {
-        Ok(key) => fetch_worldtides(ports, start_unix, &key).await,
-        Err(_) => fetch_openmeteo(ports, start_unix).await,
+    if let Some(key) = worldtides_key() {
+        let out = fetch_worldtides(ports, start_unix, &key).await;
+        if !out.is_empty() {
+            return out;
+        }
+        log::warn!("WorldTides returned no tides; falling back to the keyless source");
     }
+    fetch_openmeteo(ports, start_unix).await
 }
 
 async fn fetch_worldtides(ports: &[&Port], start_unix: i64, key: &str) -> Vec<SeedCandidate> {
@@ -402,6 +420,23 @@ async fn fetch_openmeteo(ports: &[&Port], start_unix: i64) -> Vec<SeedCandidate>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A config var declared in app.json but left empty reads back as Ok(""),
+    /// which previously sent every request to WorldTides with an empty key and
+    /// left the calendar with no tides at all.
+    #[test]
+    fn blank_worldtides_key_counts_as_absent() {
+        for raw in ["", "   ", "\t"] {
+            let parsed = Some(raw.to_string())
+                .map(|k| k.trim().to_string())
+                .filter(|k| !k.is_empty());
+            assert!(parsed.is_none(), "{raw:?} should count as no key");
+        }
+        let real = Some("  abc123  ".to_string())
+            .map(|k| k.trim().to_string())
+            .filter(|k| !k.is_empty());
+        assert_eq!(real.as_deref(), Some("abc123"));
+    }
 
     #[test]
     fn horizon_follows_the_active_source() {

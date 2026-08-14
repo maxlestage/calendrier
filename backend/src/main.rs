@@ -63,9 +63,14 @@ async fn main() -> std::io::Result<()> {
         let db = db.clone();
         let snapshot = snapshot.clone();
         tokio::spawn(async move {
-            let every = std::time::Duration::from_secs(6 * 3600);
+            // Retry soon after boot first: if the startup fetch failed (network
+            // blip, API hiccup), waiting a whole cycle would leave the calendar
+            // without tides for hours. Then settle into the slow cadence.
+            let mut delay = std::time::Duration::from_secs(10 * 60);
+            let steady = std::time::Duration::from_secs(6 * 3600);
             loop {
-                tokio::time::sleep(every).await;
+                tokio::time::sleep(delay).await;
+                delay = steady;
                 if seed::refresh_tides(&db).await > 0 {
                     snapshot.refresh(&db).await;
                 }
