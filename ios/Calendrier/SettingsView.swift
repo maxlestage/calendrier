@@ -113,7 +113,7 @@ struct SettingsView: View {
                 if let error { Section { Text(error).foregroundStyle(.red).font(.footnote) } }
 
                 Section {
-                    Text("Calendrier — par Maxime Nathan Lestage")
+                    Text("Calendrier — conçu et développé par Maxime Nathan Lestage")
                         .font(.footnote).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .listRowBackground(Color.clear)

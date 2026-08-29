@@ -85,7 +85,7 @@ struct SplashView: View {
 
     private var credit: some View {
         VStack(spacing: 3) {
-            Text("Créé et développé par")
+            Text("Conçu et développé par")
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.55))
             Text("Maxime Nathan Lestage")
