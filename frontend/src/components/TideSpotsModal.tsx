@@ -318,7 +318,7 @@ export default function TideSpotsModal({ voiceEnabled, onVoiceChange, onSaved, o
             {busy ? "Enregistrement…" : "Enregistrer"}
           </button>
         </div>
-        <p className="credits">Calendrier — par Maxime Nathan Lestage</p>
+        <p className="credits">Calendrier — conçu et développé par Maxime Nathan Lestage</p>
       </div>
     </div>
   );
